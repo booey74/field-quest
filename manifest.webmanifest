@@ -1,0 +1,10 @@
+{
+  "name": "Field Quest",
+  "short_name": "Field Quest",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#111827",
+  "description": "Outdoor GPS challenge games for families.",
+  "icons": []
+}
