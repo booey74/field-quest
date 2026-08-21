@@ -1,121 +1,111 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111827">
-<title>Field Quest</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><title>Field Quest v0.4</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="styles.css">
+<style>
+*{box-sizing:border-box}:root{--panel:#111827;--line:#334155;--text:#f8fafc;--muted:#94a3b8;--accent:#22c55e;--orange:#f97316;--blue:#2563eb}
+body{margin:0;background:linear-gradient(180deg,#0f172a,#020617);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}.app{width:min(760px,100%);margin:auto;padding:20px 16px 30px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}h1,h2,h3,p{margin-top:0}h1{margin-bottom:0}.eyebrow{margin-bottom:4px;color:var(--accent);font-weight:800;letter-spacing:.12em;font-size:.75rem}.badge,.score{background:#1e293b;border:1px solid var(--line);border-radius:999px;padding:8px 10px;color:var(--muted);white-space:nowrap}.card{background:#111827f5;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}.small{color:var(--muted)}button,input,select{font:inherit}button{border:0;border-radius:12px;min-height:48px;padding:12px 14px;background:#1f2937;color:white;font-weight:750}.primary{background:var(--accent);color:#052e16}.ghost{border:1px solid var(--line);background:transparent}.wide{width:100%;margin-top:12px}.button-row,.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stats{margin:14px 0}.stats div{background:#0b1220;padding:12px;border-radius:12px}.stats span{display:block;color:var(--muted);font-size:.82rem}.stats strong{font-size:1.2rem}label{display:grid;gap:8px;margin:14px 0;color:var(--muted);font-weight:650}input[type=number],select{width:100%;border:1px solid var(--line);background:#0b1220;color:white;padding:12px;border-radius:12px}.category-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check-card,.mode-card{margin:0;display:flex;align-items:center;gap:10px;background:#0b1220;border:1px solid var(--line);padding:12px;border-radius:12px;color:white}.mode-grid{display:grid;gap:10px}.mode-card span{display:grid}.mode-card small{color:var(--muted);font-weight:500}.map-wrap{overflow:hidden;border:1px solid var(--line);border-radius:16px;margin-top:12px;background:#0b1220}#setupMap{height:260px}#gameMap{height:280px}.map-actions{padding:8px;display:flex;justify-content:flex-end}.game-head{display:flex;justify-content:space-between}.distance-box{text-align:center;padding:22px 10px}.distance{font-size:clamp(3rem,18vw,6rem);font-weight:900;line-height:.95}.bearing{margin-top:10px;color:var(--muted)}.progress-track{height:8px;background:#0b1220;border-radius:999px;overflow:hidden}.progress-bar{height:100%;width:0;background:var(--accent)}.challenge{margin-top:18px;background:#052e16;border:1px solid #166534;border-radius:16px;padding:16px}.answers{display:grid;gap:10px}.answers button{background:#14532d;border:1px solid #166534;text-align:left}.hidden{display:none!important}.boundary-marker{width:26px;height:26px;border-radius:50%;background:#22c55e;border:3px solid white;color:#052e16;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px #0006}.player-arrow{width:34px;height:34px;border-radius:50%;background:#2563eb;border:3px solid white;color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;box-shadow:0 2px 8px #0006}.hard-nav{text-align:center;padding:24px 10px}.hard-arrow{font-size:7rem;line-height:1;transition:transform .15s linear}.hard-label{font-weight:900;letter-spacing:.08em}.sensor-note{color:#fbbf24;font-size:.82rem;margin-top:8px}.modal{position:fixed;inset:0;z-index:9999;background:#020617}.modal #fullMap{width:100%;height:100%}.hud{position:absolute;z-index:10000;left:12px;right:12px;background:#0f172ae8;border:1px solid #94a3b840;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}.top-hud{top:12px}.bottom-hud{bottom:12px}.hud-label{display:block;color:#94a3b8;font-size:.7rem;font-weight:800;letter-spacing:.1em}.hud-hint{text-align:right;color:#fdba74;font-weight:750}@media(max-width:480px){.category-grid{grid-template-columns:1fr}#setupMap{height:230px}#gameMap{height:250px}}
+</style>
 </head>
 <body>
 <main class="app">
-<header>
-  <div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div>
-  <span id="gpsBadge" class="badge">GPS waiting</span>
-</header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><span id="gpsBadge" class="badge">GPS waiting</span></header>
 
-<section class="card">
-<h2>1. Define the play area</h2>
-<p>Walk around the edge and mark points. The map updates as you go so you can see the boundary you are creating.</p>
-<div id="setupMapWrap" class="map-wrap"><div id="setupMap"></div></div>
-<div class="button-row">
-  <button id="startGpsBtn" class="primary">Start GPS</button>
-  <button id="markPointBtn" disabled>Mark boundary point</button>
-</div>
-<div class="stats">
-  <div><span>Boundary points</span><strong id="boundaryCount">0</strong></div>
-  <div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div>
-</div>
-<button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
-</section>
+<section class="card"><h2>1. Define the play area</h2><p>Walk around the edge and mark points. Numbered markers appear immediately.</p>
+<div class="map-wrap"><div id="setupMap"></div><div class="map-actions"><button id="recenterSetupBtn" class="ghost">Re-centre</button></div></div>
+<div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
+<div class="stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
+<button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button></section>
 
-<section class="card">
-<h2>2. Player & questions</h2>
+<section class="card"><h2>2. Player & questions</h2>
 <label>Player age<input id="playerAge" type="number" min="5" max="16" value="10"></label>
-<p class="field-label">Question categories</p>
 <div class="category-grid">
 <label class="check-card"><input type="checkbox" name="category" value="maths" checked> Maths</label>
 <label class="check-card"><input type="checkbox" name="category" value="science" checked> Science</label>
 <label class="check-card"><input type="checkbox" name="category" value="geography" checked> Geography</label>
 <label class="check-card"><input type="checkbox" name="category" value="general" checked> General knowledge</label>
 <label class="check-card"><input type="checkbox" name="category" value="logic" checked> Logic & puzzles</label>
-</div>
-</section>
+</div></section>
 
-<section class="card">
-<h2>3. Navigation difficulty</h2>
-<div class="mode-grid">
-  <label class="mode-card">
-    <input type="radio" name="navMode" value="easy" checked>
-    <span><strong>Easy</strong><small>Exact checkpoint shown on the map.</small></span>
-  </label>
-  <label class="mode-card">
-    <input type="radio" name="navMode" value="medium">
-    <span><strong>Medium</strong><small>Map shows a search zone, but hides the exact checkpoint.</small></span>
-  </label>
-  <label class="mode-card">
-    <input type="radio" name="navMode" value="hard">
-    <span><strong>Hard</strong><small>No map. Use distance and compass direction.</small></span>
-  </label>
-</div>
-</section>
+<section class="card"><h2>3. Navigation difficulty</h2><div class="mode-grid">
+<label class="mode-card"><input type="radio" name="navMode" value="easy" checked><span><strong>Easy</strong><small>Exact checkpoint pin, player movement arrow and distance.</small></span></label>
+<label class="mode-card"><input type="radio" name="navMode" value="medium"><span><strong>Medium</strong><small>Highlighted grid area, but exact checkpoint hidden.</small></span></label>
+<label class="mode-card"><input type="radio" name="navMode" value="hard"><span><strong>Hard</strong><small>No map. Rotating direction arrow and distance.</small></span></label>
+</div></section>
 
-<section class="card">
-<h2>4. Game settings</h2>
+<section class="card"><h2>4. Game settings</h2>
 <label>Checkpoints<input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
-<button id="generateBtn" class="primary wide" disabled>Generate game</button>
-</section>
+<button id="generateBtn" class="primary wide" disabled>Generate game</button></section>
 
-<section class="card hidden" id="gameCard">
-<div class="game-head">
-  <div><p class="eyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div>
-  <div class="score" id="scoreText">0 / 0</div>
-</div>
-
-<div id="gameMapWrap" class="map-wrap">
-  <div id="gameMap"></div>
-  <div class="map-actions">
-    <button id="expandMapBtn" class="ghost">Expand map</button>
-  </div>
-</div>
-
-<div class="distance-box">
-  <div id="distanceText" class="distance">—</div>
-  <div id="bearingText" class="bearing">Waiting for GPS…</div>
-  <div id="zoneText" class="zone-text hidden"></div>
-</div>
-
+<section class="card hidden" id="gameCard"><div class="game-head"><div><p class="eyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div><div class="score" id="scoreText">0 / 0</div></div>
+<div id="gameMapWrap" class="map-wrap"><div id="gameMap"></div><div class="map-actions"><button id="expandMapBtn" class="ghost">Expand map</button></div></div>
+<div id="hardNavPanel" class="hard-nav hidden"><div id="hardArrow" class="hard-arrow">↑</div><div class="hard-label">HEAD THIS WAY</div><div id="hardCompass" class="bearing">—</div><div id="hardSensorNote" class="sensor-note hidden">Using GPS direction fallback</div></div>
+<div class="distance-box"><div id="distanceText" class="distance">—</div><div id="bearingText" class="bearing">Waiting for GPS…</div><div id="zoneText" class="sensor-note hidden"></div></div>
 <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+<div id="challengePanel" class="challenge hidden"><p class="eyebrow">CHALLENGE UNLOCKED</p><p id="challengeMeta" class="bearing"></p><h3 id="challengeQuestion"></h3><div id="answerOptions" class="answers"></div><p id="feedback"></p></div>
+<button id="endGameBtn" class="ghost wide">End game</button></section>
 
-<div id="challengePanel" class="challenge hidden">
-<p class="eyebrow">CHALLENGE UNLOCKED</p>
-<p id="challengeMeta" class="challenge-meta"></p>
-<h3 id="challengeQuestion"></h3>
-<div id="answerOptions" class="answers"></div>
-<p id="feedback" class="feedback"></p>
+<div id="fullscreenMapModal" class="modal hidden"><div id="fullMap"></div>
+<div class="hud top-hud"><div><span class="hud-label">CHECKPOINT</span><strong id="hudCheckpoint">1 of 6</strong></div><button id="closeMapBtn" class="ghost">Collapse</button></div>
+<div class="hud bottom-hud"><div><span class="hud-label">DISTANCE</span><strong id="hudDistance">—</strong></div><div id="hudHint" class="hud-hint">Follow the pin</div></div>
 </div>
 
-<button id="endGameBtn" class="ghost wide">End game</button>
-</section>
-
-<div id="fullscreenMapModal" class="modal hidden">
-  <div class="modal-head">
-    <strong>Checkpoint map</strong>
-    <button id="closeMapBtn" class="ghost">Close</button>
-  </div>
-  <div id="fullMap"></div>
-</div>
-
-<section class="card small">
-<h2>Safety</h2>
-<p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p>
-</section>
+<section class="card small"><h2>Safety</h2><p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p></section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
-</body>
-</html>
+<script>
+const S={currentPos:null,prevPos:null,boundary:[],boundaryMarkers:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,setupMap:null,setupPlayer:null,setupBoundary:null,setupAutoFit:true,gameMap:null,gamePlayer:null,gameTarget:null,gameBoundary:null,gameGrid:null,fullMap:null,fullPlayer:null,fullTarget:null,fullBoundary:null,fullGrid:null,navMode:"easy",deviceHeading:null,travelHeading:null};
+const Q=[
+{id:"m1",min:7,max:9,c:"maths",q:"What is 6 × 7?",o:["36","42","48","54"],a:"42"},{id:"m2",min:7,max:9,c:"maths",q:"Half of 36 is…",o:["16","17","18","19"],a:"18"},{id:"s1",min:7,max:9,c:"science",q:"Which organ pumps blood around your body?",o:["Lungs","Brain","Heart","Stomach"],a:"Heart"},{id:"g1",min:7,max:9,c:"geography",q:"What is the capital city of Wales?",o:["Swansea","Cardiff","Bangor","Newport"],a:"Cardiff"},{id:"k1",min:7,max:9,c:"general",q:"How many days are there in a leap year?",o:["364","365","366","367"],a:"366"},{id:"l1",min:7,max:9,c:"logic",q:"What comes next: 2, 4, 8, 16, ...?",o:["18","24","30","32"],a:"32"},
+{id:"m3",min:9,max:11,c:"maths",q:"What is 7 × 8?",o:["54","56","64","48"],a:"56"},{id:"m4",min:9,max:11,c:"maths",q:"What is 144 ÷ 12?",o:["10","11","12","14"],a:"12"},{id:"m5",min:9,max:11,c:"maths",q:"You have £10 and spend £3.75. How much is left?",o:["£6.15","£6.25","£7.25","£5.25"],a:"£6.25"},{id:"m6",min:9,max:11,c:"maths",q:"What is 3/4 of 20?",o:["12","15","16","18"],a:"15"},{id:"m7",min:9,max:11,c:"maths",q:"A rectangle is 8 m long and 5 m wide. What is its area?",o:["13 m²","26 m²","40 m²","80 m²"],a:"40 m²"},{id:"s2",min:9,max:11,c:"science",q:"Which gas do plants take in from the air?",o:["Oxygen","Carbon dioxide","Hydrogen","Helium"],a:"Carbon dioxide"},{id:"s3",min:9,max:11,c:"science",q:"Which force pulls objects towards Earth?",o:["Friction","Gravity","Magnetism","Electricity"],a:"Gravity"},{id:"g2",min:9,max:11,c:"geography",q:"Which is the largest ocean?",o:["Atlantic","Indian","Pacific","Arctic"],a:"Pacific"},{id:"g3",min:9,max:11,c:"geography",q:"Which line divides Earth into Northern and Southern Hemispheres?",o:["Prime Meridian","Equator","Tropic of Cancer","Date Line"],a:"Equator"},{id:"k2",min:9,max:11,c:"general",q:"Which planet is known as the Red Planet?",o:["Mars","Venus","Jupiter","Mercury"],a:"Mars"},{id:"k3",min:9,max:11,c:"general",q:"How many degrees are in a right angle?",o:["45","90","180","360"],a:"90"},{id:"l2",min:9,max:11,c:"logic",q:"What is the next number: 3, 6, 12, 24, ...?",o:["30","36","48","60"],a:"48"},{id:"l3",min:9,max:11,c:"logic",q:"I am odd. Take away one letter and I become even. What number am I?",o:["Three","Five","Seven","Nine"],a:"Seven"},
+{id:"m8",min:11,max:13,c:"maths",q:"What is 15% of 200?",o:["15","20","30","35"],a:"30"},{id:"s5",min:11,max:13,c:"science",q:"Which particle has a negative electrical charge?",o:["Proton","Neutron","Electron","Nucleus"],a:"Electron"},{id:"g5",min:11,max:13,c:"geography",q:"Which is the longest river in the UK?",o:["Thames","Severn","Trent","Wye"],a:"Severn"},{id:"k5",min:11,max:13,c:"general",q:"Which language has the most native speakers worldwide?",o:["English","Spanish","Mandarin Chinese","Hindi"],a:"Mandarin Chinese"},{id:"l5",min:11,max:13,c:"logic",q:"If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?",o:["Yes","No","Sometimes","Not enough information"],a:"Yes"}];
+const $=id=>document.getElementById(id),rad=v=>v*Math.PI/180,deg=v=>v*180/Math.PI;
+const cats=()=>[...document.querySelectorAll('input[name="category"]:checked')].map(x=>x.value),mode=()=>document.querySelector('input[name="navMode"]:checked').value;
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function dist(a,b){const R=6371000,dla=rad(b.lat-a.lat),dlo=rad(b.lon-a.lon),l1=rad(a.lat),l2=rad(b.lat),h=Math.sin(dla/2)**2+Math.cos(l1)*Math.cos(l2)*Math.sin(dlo/2)**2;return 2*R*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
+function bear(a,b){let l1=rad(a.lat),l2=rad(b.lat),dl=rad(b.lon-a.lon),y=Math.sin(dl)*Math.cos(l2),x=Math.cos(l1)*Math.sin(l2)-Math.sin(l1)*Math.cos(l2)*Math.cos(dl);return(deg(Math.atan2(y,x))+360)%360}
+function comp(d){return["N","NE","E","SE","S","SW","W","NW"][Math.round(d/45)%8]}
+function inside(p,poly){let x=p.lon,y=p.lat,c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if(((a.lat>y)!=(b.lat>y))&&(x<(b.lon-a.lon)*(y-a.lat)/((b.lat-a.lat)||1e-12)+a.lon))c=!c}return c}
+function box(poly){let la=poly.map(p=>p.lat),lo=poly.map(p=>p.lon);return{minLat:Math.min(...la),maxLat:Math.max(...la),minLon:Math.min(...lo),maxLon:Math.max(...lo)}}
+function diag(poly){let b=box(poly);return dist({lat:b.minLat,lon:b.minLon},{lat:b.maxLat,lon:b.maxLon})}
+function randomPoint(poly){let b=box(poly);for(let i=0;i<5000;i++){let p={lat:b.minLat+Math.random()*(b.maxLat-b.minLat),lon:b.minLon+Math.random()*(b.maxLon-b.minLon)};if(inside(p,poly))return p}throw Error("point")}
+function segDist(p,a,b){const r=rad((a.lat+b.lat+p.lat)/3),mx=111320*Math.cos(r),my=110540,px=p.lon*mx,py=p.lat*my,ax=a.lon*mx,ay=a.lat*my,bx=b.lon*mx,by=b.lat*my,dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;let t=den?((px-ax)*dx+(py-ay)*dy)/den:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))}
+function edgeDist(p,poly){let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,segDist(p,poly[i],poly[(i+1)%poly.length]));return best}
+function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035));for(let round=0;round<8;round++){let out=[];for(let i=0;i<8000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9}let out=[];while(out.length<count)out.push(randomPoint(poly));return shuffle(out)}
+function pool(age,cs){let p=Q.filter(q=>age>=q.min&&age<=q.max&&cs.includes(q.c));if(!p.length)p=Q.filter(q=>cs.includes(q.c)&&Math.abs((q.min+q.max)/2-age)<=3);return shuffle(p)}
+function bIcon(n){return L.divIcon({className:"",html:`<div class="boundary-marker">${n}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}
+function pIcon(rot=0){return L.divIcon({className:"",html:`<div class="player-arrow" style="transform:rotate(${rot}deg)">↑</div>`,iconSize:[34,34],iconAnchor:[17,17]})}
+function tIcon(n){return L.divIcon({className:"",html:`<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;background:#f97316;border:3px solid white;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-weight:900;color:white">${n}</span></div>`,iconSize:[34,34],iconAnchor:[17,31]})}
+function orientation(){const h=e=>{let x=typeof e.webkitCompassHeading==="number"?e.webkitCompassHeading:(typeof e.alpha==="number"?(360-e.alpha)%360:null);if(x!=null){S.deviceHeading=x;hardArrow()}};if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function")DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")addEventListener("deviceorientation",h,true)}).catch(()=>{});else if(typeof DeviceOrientationEvent!=="undefined"){addEventListener("deviceorientationabsolute",h,true);addEventListener("deviceorientation",h,true)}}
+function startGPS(){if(!navigator.geolocation){alert("GPS not supported");return}orientation();$("gpsBadge").textContent="GPS starting…";navigator.geolocation.watchPosition(p=>{S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};if(typeof p.coords.heading==="number"&&!Number.isNaN(p.coords.heading)&&p.coords.heading>=0)S.travelHeading=p.coords.heading;else if(S.prevPos&&dist(S.prevPos,S.currentPos)>2)S.travelHeading=bear(S.prevPos,S.currentPos);$("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;updateSetup();updateGame();updatePlayers()},()=>alert("Please allow precise location."),{enableHighAccuracy:true,maximumAge:1000,timeout:10000})}
+function ensureSetup(){if(S.setupMap)return;S.setupMap=L.map("setupMap").setView([51.75,-3.38],17);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(S.setupMap);S.setupMap.on("zoomstart dragstart",()=>S.setupAutoFit=false)}
+function updateSetup(){ensureSetup();if(S.currentPos){let ll=[S.currentPos.lat,S.currentPos.lon];if(!S.setupPlayer)S.setupPlayer=L.marker(ll,{icon:pIcon(S.travelHeading||0)}).addTo(S.setupMap);else S.setupPlayer.setLatLng(ll);if(!S.boundary.length&&S.setupAutoFit)S.setupMap.setView(ll,17)}S.boundaryMarkers.forEach(m=>S.setupMap.removeLayer(m));S.boundaryMarkers=[];S.boundary.forEach((p,i)=>S.boundaryMarkers.push(L.marker([p.lat,p.lon],{icon:bIcon(i+1),interactive:false}).addTo(S.setupMap)));if(S.setupBoundary){S.setupMap.removeLayer(S.setupBoundary);S.setupBoundary=null}if(S.boundary.length>=2){S.setupBoundary=(S.boundary.length>=3?L.polygon(S.boundary.map(p=>[p.lat,p.lon]),{color:"#22c55e",weight:3,fillOpacity:.08}):L.polyline(S.boundary.map(p=>[p.lat,p.lon]),{color:"#22c55e",weight:3})).addTo(S.setupMap);if(S.setupAutoFit)S.setupMap.fitBounds(S.setupBoundary.getBounds(),{padding:[20,20],maxZoom:18})}}
+function mark(){S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup()}
+function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup()}
+function recenter(){S.setupAutoFit=true;if(S.setupBoundary)S.setupMap.fitBounds(S.setupBoundary.getBounds(),{padding:[20,20],maxZoom:18});else if(S.currentPos)S.setupMap.setView([S.currentPos.lat,S.currentPos.lon],17)}
+function gridBounds(t){let b=box(S.boundary),w=(b.maxLon-b.minLon)/3,h=(b.maxLat-b.minLat)/3,c=Math.max(0,Math.min(2,Math.floor((t.lon-b.minLon)/w))),r=Math.max(0,Math.min(2,Math.floor((t.lat-b.minLat)/h))),west=b.minLon+c*w,south=b.minLat+r*h;return[[south,west],[south+h,west+w]]}
+function clearLayers(map,p){for(let k of [p+"Player",p+"Target",p+"Boundary",p+"Grid"])if(S[k]&&map){map.removeLayer(S[k]);S[k]=null}}
+function draw(map,p){clearLayers(map,p);S[p+"Boundary"]=L.polygon(S.boundary.map(x=>[x.lat,x.lon]),{color:"#22c55e",weight:3,fillOpacity:.06}).addTo(map);if(S.currentPos)S[p+"Player"]=L.marker([S.currentPos.lat,S.currentPos.lon],{icon:pIcon(S.travelHeading||0)}).addTo(map);let t=S.checkpoints[S.currentIndex];if(!t)return;if(S.navMode==="easy")S[p+"Target"]=L.marker([t.lat,t.lon],{icon:tIcon(S.currentIndex+1)}).addTo(map);else if(S.navMode==="medium")S[p+"Grid"]=L.rectangle(gridBounds(t),{color:"#f97316",weight:2,fillColor:"#f97316",fillOpacity:.18}).addTo(map)}
+function fit(map){map.fitBounds(S.boundary.map(p=>[p.lat,p.lon]),{padding:[35,35],maxZoom:18})}
+function setupGameMap(){if(!S.gameMap){S.gameMap=L.map("gameMap").setView([S.currentPos.lat,S.currentPos.lon],17);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(S.gameMap)}draw(S.gameMap,"game");setTimeout(()=>{if(S.navMode!=="hard"){S.gameMap.invalidateSize();fit(S.gameMap)}},100)}
+function generate(){let count=Math.max(1,Math.min(20,+$("checkpointCount").value||6)),age=+$("playerAge").value||10,cs=cats(),p=pool(age,cs);if(!cs.length)return alert("Choose at least one category.");if(!p.length)return alert("No suitable questions yet.");count=Math.min(count,p.length);S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();$("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");setupGameMap();updateGameUI();updateGame();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100)}
+function updatePlayers(){if(!S.currentPos)return;let ll=[S.currentPos.lat,S.currentPos.lon];for(let k of ["setupPlayer","gamePlayer","fullPlayer"])if(S[k])S[k].setLatLng(ll)}
+function hardArrow(){if(S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length)return;let tb=bear(S.currentPos,S.checkpoints[S.currentIndex]),ref=S.deviceHeading,fb=false;if(ref==null){ref=S.travelHeading;fb=true}if(ref==null){ref=0;fb=true}$("hardArrow").style.transform=`rotate(${(tb-ref+360)%360}deg)`;$("hardCompass").textContent=comp(tb);$("hardSensorNote").classList.toggle("hidden",!fb)}
+function updateGameUI(){let n=S.checkpoints.length;$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";if(S.gameMap)draw(S.gameMap,"game");if(S.fullMap)draw(S.fullMap,"full");hud()}
+function updateGame(){if(!S.currentPos||!S.checkpoints.length||S.currentIndex>=S.checkpoints.length)return;let t=S.checkpoints[S.currentIndex],d=dist(S.currentPos,t),r=+$("unlockRadius").value;if(S.firstDistance==null||d>S.firstDistance)S.firstDistance=d;$("distanceText").textContent=Math.round(d)+" m";$("progressBar").style.width=Math.max(0,Math.min(100,100-d/S.firstDistance*100))+"%";if(S.navMode==="easy")$("bearingText").textContent="Follow the checkpoint pin";else if(S.navMode==="medium")$("bearingText").textContent="Checkpoint is somewhere in the highlighted grid area";else $("bearingText").textContent="Turn until the arrow points forwards";if(S.navMode==="medium"){let b=gridBounds(t),inCell=S.currentPos.lat>=b[0][0]&&S.currentPos.lat<=b[1][0]&&S.currentPos.lon>=b[0][1]&&S.currentPos.lon<=b[1][1];$("zoneText").classList.toggle("hidden",!inCell);$("zoneText").textContent="YOU'RE IN THE TARGET AREA — use the distance to find the checkpoint"}S.lastDistance=d;hardArrow();hud(d);if(d<=r&&!S.unlocked)unlock()}
+function hud(d=S.lastDistance){$("hudCheckpoint").textContent=`${S.currentIndex+1} of ${S.checkpoints.length}`;$("hudDistance").textContent=d==null?"—":Math.round(d)+" m";$("hudHint").textContent=S.navMode==="easy"?"Follow the checkpoint pin":"Checkpoint is somewhere in the highlighted area"}
+function label(c){return{maths:"Maths",science:"Science",geography:"Geography",general:"General knowledge",logic:"Logic & puzzles"}[c]}
+function unlock(){S.unlocked=true;if(!$("fullscreenMapModal").classList.contains("hidden"))closeFull();let q=S.checkpoints[S.currentIndex].challenge;$("challengePanel").classList.remove("hidden");$("challengeMeta").textContent=`${label(q.c)} • age ${q.min}–${q.max}`;$("challengeQuestion").textContent=q.q;shuffle(q.o).forEach(o=>{let b=document.createElement("button");b.textContent=o;b.onclick=()=>answer(o,q.a);$("answerOptions").appendChild(b)});if(navigator.vibrate)navigator.vibrate([120,80,120])}
+function answer(choice,correct){if(choice===correct){S.score++;$("feedback").textContent="Correct! Next checkpoint unlocked."}else $("feedback").textContent=`Not quite. The answer was ${correct}.`;[...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");if(S.gameMap)clearLayers(S.gameMap,"game");return}updateGameUI();updateGame()},1200)}
+function openFull(){if(S.navMode==="hard")return;$("fullscreenMapModal").classList.remove("hidden");setTimeout(()=>{if(!S.fullMap){S.fullMap=L.map("fullMap").setView([S.currentPos.lat,S.currentPos.lon],17);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(S.fullMap)}draw(S.fullMap,"full");S.fullMap.invalidateSize();fit(S.fullMap);hud()},100)}
+function closeFull(){$("fullscreenMapModal").classList.add("hidden")}
+$("startGpsBtn").onclick=startGPS;$("markPointBtn").onclick=mark;$("clearBoundaryBtn").onclick=clearBoundary;$("recenterSetupBtn").onclick=recenter;$("generateBtn").onclick=generate;$("expandMapBtn").onclick=openFull;$("closeMapBtn").onclick=closeFull;$("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
+ensureSetup();
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
+</script>
+</body></html>

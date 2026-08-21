@@ -1,20 +1,16 @@
-# Field Quest v0.3
+# Field Quest v0.4
 
-Changes from v0.2:
+Changes:
+- Numbered boundary markers appear immediately
+- Boundary lines/polygon added from point 2 onwards
+- Manual setup-map zoom/pan is respected
+- Re-centre button added
+- New controlled-random checkpoint placement
+- Completed checkpoint graphics are removed
+- Easy: exact pin + movement arrow + distance
+- Medium: highlighted 3x3 grid area + distance, exact point hidden
+- Hard: no map + phone-relative rotating arrow + compass label + fallback
+- Full-screen map includes checkpoint/distance/navigation overlays
+- Full-screen map collapses automatically when a challenge unlocks
 
-- Map visible while defining the boundary
-- Boundary line/polygon updates as points are marked
-- Easy / Medium / Hard navigation modes
-  - Easy: exact checkpoint pin
-  - Medium: search zone instead of exact pin
-  - Hard: no map; distance + compass direction
-- Expandable full-screen game map
-- Improved checkpoint generation so checkpoints are deliberately spread across the playing area
-- Minimum separation adapts to field size and number of checkpoints
-- Checkpoints are encouraged away from boundary vertices
-- Existing age filtering, category selection and no-repeat question logic retained
-
-To update GitHub:
-Upload these files into the existing repository and commit the replacements.
-
-If the old version appears after deployment, fully close/reopen the app or refresh the GitHub Pages site.
+Upload the four files in this folder to the existing GitHub repository and commit the replacements.
