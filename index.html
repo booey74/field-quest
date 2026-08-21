@@ -11,13 +11,23 @@
 </head>
 <body>
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><span id="gpsBadge" class="badge">GPS waiting</span></header>
+<header>
+  <div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div>
+  <span id="gpsBadge" class="badge">GPS waiting</span>
+</header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
-<p>Walk to each corner or edge point and tap <strong>Mark boundary point</strong>. Use at least 3 points.</p>
-<div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
-<div class="stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
+<p>Walk around the edge and mark points. The map updates as you go so you can see the boundary you are creating.</p>
+<div id="setupMapWrap" class="map-wrap"><div id="setupMap"></div></div>
+<div class="button-row">
+  <button id="startGpsBtn" class="primary">Start GPS</button>
+  <button id="markPointBtn" disabled>Mark boundary point</button>
+</div>
+<div class="stats">
+  <div><span>Boundary points</span><strong id="boundaryCount">0</strong></div>
+  <div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div>
+</div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
 </section>
 
@@ -35,27 +45,76 @@
 </section>
 
 <section class="card">
-<h2>3. Game settings</h2>
+<h2>3. Navigation difficulty</h2>
+<div class="mode-grid">
+  <label class="mode-card">
+    <input type="radio" name="navMode" value="easy" checked>
+    <span><strong>Easy</strong><small>Exact checkpoint shown on the map.</small></span>
+  </label>
+  <label class="mode-card">
+    <input type="radio" name="navMode" value="medium">
+    <span><strong>Medium</strong><small>Map shows a search zone, but hides the exact checkpoint.</small></span>
+  </label>
+  <label class="mode-card">
+    <input type="radio" name="navMode" value="hard">
+    <span><strong>Hard</strong><small>No map. Use distance and compass direction.</small></span>
+  </label>
+</div>
+</section>
+
+<section class="card">
+<h2>4. Game settings</h2>
 <label>Checkpoints<input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
-<label class="switch-row"><span>Show map during game<small>Turn it off for a harder navigation challenge.</small></span><input id="showMap" type="checkbox" checked></label>
 <button id="generateBtn" class="primary wide" disabled>Generate game</button>
 </section>
 
 <section class="card hidden" id="gameCard">
-<div class="game-head"><div><p class="eyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div><div class="score" id="scoreText">0 / 0</div></div>
-<div id="mapWrap" class="map-wrap"><div id="map"></div><div class="map-key"><span>🔵 You</span><span>🟠 Checkpoint</span></div></div>
-<button id="toggleMapBtn" class="ghost wide">Hide map</button>
-<div class="distance-box"><div id="distanceText" class="distance">—</div><div id="bearingText" class="bearing">Waiting for GPS…</div></div>
-<div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
-<div id="challengePanel" class="challenge hidden">
-<p class="eyebrow">CHALLENGE UNLOCKED</p><p id="challengeMeta" class="challenge-meta"></p><h3 id="challengeQuestion"></h3><div id="answerOptions" class="answers"></div><p id="feedback" class="feedback"></p>
+<div class="game-head">
+  <div><p class="eyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div>
+  <div class="score" id="scoreText">0 / 0</div>
 </div>
+
+<div id="gameMapWrap" class="map-wrap">
+  <div id="gameMap"></div>
+  <div class="map-actions">
+    <button id="expandMapBtn" class="ghost">Expand map</button>
+  </div>
+</div>
+
+<div class="distance-box">
+  <div id="distanceText" class="distance">—</div>
+  <div id="bearingText" class="bearing">Waiting for GPS…</div>
+  <div id="zoneText" class="zone-text hidden"></div>
+</div>
+
+<div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+
+<div id="challengePanel" class="challenge hidden">
+<p class="eyebrow">CHALLENGE UNLOCKED</p>
+<p id="challengeMeta" class="challenge-meta"></p>
+<h3 id="challengeQuestion"></h3>
+<div id="answerOptions" class="answers"></div>
+<p id="feedback" class="feedback"></p>
+</div>
+
 <button id="endGameBtn" class="ghost wide">End game</button>
 </section>
 
-<section class="card small"><h2>Safety</h2><p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p></section>
+<div id="fullscreenMapModal" class="modal hidden">
+  <div class="modal-head">
+    <strong>Checkpoint map</strong>
+    <button id="closeMapBtn" class="ghost">Close</button>
+  </div>
+  <div id="fullMap"></div>
+</div>
+
+<section class="card small">
+<h2>Safety</h2>
+<p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p>
+</section>
 </main>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="app.js"></script>
 </body>

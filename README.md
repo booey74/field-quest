@@ -1,15 +1,20 @@
-# Field Quest v0.2
+# Field Quest v0.3
 
-Changes:
-- Optional OpenStreetMap map during gameplay
-- Player location + next checkpoint pin
-- Show/hide map toggle
-- Player age
-- Selectable Maths, Science, Geography, General Knowledge and Logic/Puzzles categories
-- Age-filtered questions
-- No question repeats within a game
-- Expanded question bank
+Changes from v0.2:
 
-To update GitHub, replace the old repository files with these and commit the changes.
+- Map visible while defining the boundary
+- Boundary line/polygon updates as points are marked
+- Easy / Medium / Hard navigation modes
+  - Easy: exact checkpoint pin
+  - Medium: search zone instead of exact pin
+  - Hard: no map; distance + compass direction
+- Expandable full-screen game map
+- Improved checkpoint generation so checkpoints are deliberately spread across the playing area
+- Minimum separation adapts to field size and number of checkpoints
+- Checkpoints are encouraged away from boundary vertices
+- Existing age filtering, category selection and no-repeat question logic retained
 
-If your phone briefly shows the old version after GitHub Pages redeploys, close/reopen the app or refresh the page. The service worker cache name has been changed for v0.2.
+To update GitHub:
+Upload these files into the existing repository and commit the replacements.
+
+If the old version appears after deployment, fully close/reopen the app or refresh the GitHub Pages site.
