@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v0.6</title>
+<title>Field Quest v0.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -24,34 +24,37 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .category-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check-card,.mode-card{margin:0;display:flex;align-items:center;gap:10px;background:#0b1220;border:1px solid var(--line);padding:12px;border-radius:12px;color:white}
 .mode-grid{display:grid;gap:10px}.mode-card span{display:grid}.mode-card small{color:var(--muted);font-weight:500}
 .map-wrap{overflow:hidden;border:1px solid var(--line);border-radius:16px;margin-top:12px;background:#0b1220;position:relative}
-#setupMap{height:260px}#gameMap{height:300px}.map-actions{padding:8px;display:flex;justify-content:space-between;gap:8px;align-items:center;background:#0b1220}
+#setupMap{height:270px}#gameMap{height:310px}
+.control-bar{padding:8px;display:flex;justify-content:space-between;gap:8px;align-items:center;background:#0b1220;border-top:1px solid var(--line);flex-wrap:wrap}
+.control-group{display:flex;gap:6px;flex-wrap:wrap}
 .game-head{display:flex;justify-content:space-between}.distance-box{text-align:center;padding:22px 10px}.distance{font-size:clamp(3rem,18vw,6rem);font-weight:900;line-height:.95}
 .bearing{margin-top:10px;color:var(--muted)}.progress-track{height:8px;background:#0b1220;border-radius:999px;overflow:hidden}.progress-bar{height:100%;width:0;background:var(--accent)}
 .challenge{margin-top:18px;background:#052e16;border:1px solid #166534;border-radius:16px;padding:16px}.answers{display:grid;gap:10px}.answers button{background:#14532d;border:1px solid #166534;text-align:left}
 .hidden{display:none!important}
-.person-pin{width:44px;height:54px;filter:drop-shadow(0 2px 5px #0008)}
-.person-pin svg{display:block;width:44px;height:54px}
+.person-pin{width:44px;height:54px;filter:drop-shadow(0 2px 5px #0008)}.person-pin svg{display:block;width:44px;height:54px}
 .boundary-pin{width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid white;color:#052e16;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px #0006}
-.target-pin{width:38px;height:46px;filter:drop-shadow(0 2px 5px #0008)}
-.target-pin svg{display:block;width:38px;height:46px}
-.compass-mini{position:absolute;right:10px;top:10px;z-index:5;width:62px;height:62px;border-radius:50%;background:#0f172ae8;border:2px solid #64748b;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.compass-mini .north{position:absolute;top:3px;font-size:.72rem;font-weight:900;color:#f8fafc}
-.compass-mini .needle{width:3px;height:22px;background:#f97316;position:absolute;top:9px;left:28px;transform-origin:50% 22px;border-radius:3px}
-.compass-mini .needle:before{content:"";position:absolute;top:-7px;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid #f97316}
+.target-pin{width:38px;height:46px;filter:drop-shadow(0 2px 5px #0008)}.target-pin svg{display:block;width:38px;height:46px}
+.compass-mini{position:absolute;right:10px;top:10px;z-index:5;width:74px;height:74px;border-radius:50%;background:#0f172ae8;border:2px solid #64748b;overflow:hidden;pointer-events:none;box-shadow:0 2px 8px #0005}
+.compass-rose-mini{position:absolute;inset:5px;border:1px solid #475569;border-radius:50%;transition:transform .25s linear}
+.compass-rose-mini span{position:absolute;font-size:.68rem;font-weight:900}
+.compass-rose-mini .n{top:2px;left:50%;transform:translateX(-50%);color:#f97316}
+.compass-rose-mini .s{bottom:2px;left:50%;transform:translateX(-50%)}
+.compass-rose-mini .e{right:4px;top:50%;transform:translateY(-50%)}
+.compass-rose-mini .w{left:4px;top:50%;transform:translateY(-50%)}
+.heading-marker{position:absolute;top:3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #f8fafc;z-index:2}
 .hard-nav{text-align:center;padding:20px 10px}.compass-rose{position:relative;width:180px;height:180px;border:3px solid #64748b;border-radius:50%;background:#0b1220;margin:0 auto 12px}
-.compass-rose .dir{position:absolute;font-weight:900}.n{top:8px;left:50%;transform:translateX(-50%)}.s{bottom:8px;left:50%;transform:translateX(-50%)}.e{right:12px;top:50%;transform:translateY(-50%)}.w{left:12px;top:50%;transform:translateY(-50%)}
+.compass-rose .dir{position:absolute;font-weight:900}.n2{top:8px;left:50%;transform:translateX(-50%)}.s2{bottom:8px;left:50%;transform:translateX(-50%)}.e2{right:12px;top:50%;transform:translateY(-50%)}.w2{left:12px;top:50%;transform:translateY(-50%)}
 .hard-target-arrow{position:absolute;left:50%;top:50%;width:4px;height:66px;background:#f97316;transform-origin:50% 100%;border-radius:4px}
 .hard-target-arrow:before{content:"";position:absolute;top:-10px;left:-6px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid #f97316}
 .hard-label{font-size:1.25rem;font-weight:900}
-.segmented{display:flex;gap:6px}.seg{min-height:38px;padding:8px 10px;font-size:.84rem}.seg.active{background:#334155}
-.map-note{font-size:.8rem;color:#94a3b8;margin:8px 0 0}
+.segmented{display:flex;gap:6px}.seg{min-height:38px;padding:8px 10px;font-size:.84rem}.seg.active{background:#334155}.map-note{font-size:.8rem;color:#94a3b8;margin:8px 0 0}
 .modal{position:fixed;inset:0;z-index:9999;background:#020617}.modal #fullMap{width:100%;height:100%}
 .hud{position:absolute;z-index:10000;left:12px;right:12px;background:#0f172ae8;border:1px solid #94a3b840;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .top-hud{top:max(12px,env(safe-area-inset-top))}.bottom-hud{bottom:max(12px,env(safe-area-inset-bottom))}
 .hud-label{display:block;color:#94a3b8;font-size:.7rem;font-weight:800;letter-spacing:.1em}.hud-hint{text-align:right;color:#fdba74;font-weight:750}
-.recenter-float{position:absolute;right:10px;bottom:12px;z-index:5;min-height:40px;padding:8px 10px}
-.full-recenter{position:absolute;right:12px;bottom:94px;z-index:10000;min-height:42px}
-@media(max-width:480px){.category-grid{grid-template-columns:1fr}#setupMap{height:235px}#gameMap{height:280px}.compass-rose{width:160px;height:160px}}
+.full-controls{position:absolute;z-index:10000;right:12px;bottom:96px;display:flex;gap:8px;flex-direction:column}
+.maplibregl-ctrl-attrib{font-size:10px}
+@media(max-width:480px){.category-grid{grid-template-columns:1fr}#setupMap{height:245px}#gameMap{height:290px}.compass-rose{width:160px;height:160px}.control-bar{align-items:stretch}.control-group{width:100%}.control-group button{flex:1}}
 </style>
 </head>
 <body>
@@ -63,8 +66,8 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 <p>Walk around the edge and mark points. Numbered markers appear immediately.</p>
 <div class="map-wrap">
   <div id="setupMap"></div>
-  <div class="compass-mini"><span class="north">N</span><div id="setupCompassNeedle" class="needle"></div></div>
-  <button id="recenterSetupBtn" class="ghost recenter-float">Re-centre</button>
+  <div class="compass-mini"><div class="heading-marker"></div><div id="setupCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
+  <div class="control-bar"><div></div><button id="recenterSetupBtn" class="ghost">Re-centre</button></div>
 </div>
 <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
 <div class="stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
@@ -104,44 +107,39 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="gameMapWrap" class="map-wrap">
   <div id="gameMap"></div>
-  <div class="compass-mini"><span class="north">N</span><div id="gameCompassNeedle" class="needle"></div></div>
-  <button id="recenterGameBtn" class="ghost recenter-float">Re-centre</button>
-  <div class="map-actions">
-    <div class="segmented">
+  <div class="compass-mini"><div class="heading-marker"></div><div id="gameCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
+  <div class="control-bar">
+    <div class="control-group">
       <button id="northUpBtn" class="ghost seg active">North up</button>
       <button id="travelUpBtn" class="ghost seg">Travel up</button>
     </div>
-    <button id="expandMapBtn" class="ghost">Expand map</button>
+    <div class="control-group">
+      <button id="recenterGameBtn" class="ghost">Re-centre</button>
+      <button id="expandMapBtn" class="ghost">Expand map</button>
+    </div>
   </div>
 </div>
 <p id="travelNote" class="map-note hidden">Travel Up activates once GPS has a reliable direction of travel.</p>
 
 <div id="hardNavPanel" class="hard-nav hidden">
   <div class="compass-rose">
-    <span class="dir n">N</span><span class="dir e">E</span><span class="dir s">S</span><span class="dir w">W</span>
+    <span class="dir n2">N</span><span class="dir e2">E</span><span class="dir s2">S</span><span class="dir w2">W</span>
     <div id="hardTargetArrow" class="hard-target-arrow"></div>
   </div>
   <div id="hardCompassLabel" class="hard-label">—</div>
 </div>
 
-<div class="distance-box">
-  <div id="distanceText" class="distance">—</div>
-  <div id="bearingText" class="bearing">Waiting for GPS…</div>
-  <div id="zoneText" class="bearing hidden"></div>
-</div>
+<div class="distance-box"><div id="distanceText" class="distance">—</div><div id="bearingText" class="bearing">Waiting for GPS…</div><div id="zoneText" class="bearing hidden"></div></div>
 <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
-
-<div id="challengePanel" class="challenge hidden">
-<p class="eyebrow">CHALLENGE UNLOCKED</p><p id="challengeMeta" class="bearing"></p><h3 id="challengeQuestion"></h3><div id="answerOptions" class="answers"></div><p id="feedback"></p>
-</div>
+<div id="challengePanel" class="challenge hidden"><p class="eyebrow">CHALLENGE UNLOCKED</p><p id="challengeMeta" class="bearing"></p><h3 id="challengeQuestion"></h3><div id="answerOptions" class="answers"></div><p id="feedback"></p></div>
 <button id="endGameBtn" class="ghost wide">End game</button>
 </section>
 
 <div id="fullscreenMapModal" class="modal hidden">
   <div id="fullMap"></div>
-  <div class="compass-mini"><span class="north">N</span><div id="fullCompassNeedle" class="needle"></div></div>
+  <div class="compass-mini"><div class="heading-marker"></div><div id="fullCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
   <div class="hud top-hud"><div><span class="hud-label">CHECKPOINT</span><strong id="hudCheckpoint">1 of 6</strong></div><button id="closeMapBtn" class="ghost">Collapse</button></div>
-  <button id="recenterFullBtn" class="ghost full-recenter">Re-centre</button>
+  <div class="full-controls"><button id="recenterFullBtn" class="ghost">Re-centre</button></div>
   <div class="hud bottom-hud"><div><span class="hud-label">DISTANCE</span><strong id="hudDistance">—</strong></div><div id="hudHint" class="hud-hint">Follow the pin</div></div>
 </div>
 
@@ -153,7 +151,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",rawHeading:null,smoothHeading:null,hasReliableHeading:false
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false
 };
 
 const Q=[
@@ -193,7 +191,6 @@ const Q=[
 const $=id=>document.getElementById(id),rad=v=>v*Math.PI/180,deg=v=>v*180/Math.PI;
 const cats=()=>[...document.querySelectorAll('input[name="category"]:checked')].map(x=>x.value);
 const mode=()=>document.querySelector('input[name="navMode"]:checked').value;
-
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function dist(a,b){const R=6371000,dla=rad(b.lat-a.lat),dlo=rad(b.lon-a.lon),l1=rad(a.lat),l2=rad(b.lat),h=Math.sin(dla/2)**2+Math.cos(l1)*Math.cos(l2)*Math.sin(dlo/2)**2;return 2*R*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
 function bear(a,b){let l1=rad(a.lat),l2=rad(b.lat),dl=rad(b.lon-a.lon),y=Math.sin(dl)*Math.cos(l2),x=Math.cos(l1)*Math.sin(l2)-Math.sin(l1)*Math.cos(l2)*Math.cos(dl);return(deg(Math.atan2(y,x))+360)%360}
@@ -206,23 +203,26 @@ function segDist(p,a,b){const r=rad((a.lat+b.lat+p.lat)/3),mx=111320*Math.cos(r)
 function edgeDist(p,poly){let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,segDist(p,poly[i],poly[(i+1)%poly.length]));return best}
 function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035));for(let round=0;round<8;round++){let out=[];for(let i=0;i<8000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9}let out=[];while(out.length<count)out.push(randomPoint(poly));return shuffle(out)}
 function pool(age,cs){let exact=Q.filter(q=>q.age===age&&cs.includes(q.c));if(exact.length)return shuffle(exact);return shuffle(Q.filter(q=>Math.abs(q.age-age)===1&&cs.includes(q.c)))}
-
-function style(){
- return {version:8,sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"osm",type:"raster",source:"osm"}]};
+function richerStyle(){
+ return {
+   version:8,
+   sources:{
+     osm:{type:"raster",tiles:[
+       "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+       "https://b.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+     ],tileSize:256,attribution:"© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team"}
+   },
+   layers:[{id:"osm",type:"raster",source:"osm"}]
+ };
 }
 function newMap(container,center){
- let m=new maplibregl.Map({container,style:style(),center,zoom:17,bearing:0,pitch:0,attributionControl:true});
+ let m=new maplibregl.Map({container,style:richerStyle(),center,zoom:17,bearing:0,pitch:0,attributionControl:true});
  m.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-left");
  return m;
 }
-
 function personEl(){
  let el=document.createElement("div");el.className="person-pin";
- el.innerHTML=`<svg viewBox="0 0 44 54" aria-hidden="true">
- <circle cx="22" cy="9" r="7" fill="#ffd5a8" stroke="#fff" stroke-width="2"/>
- <path d="M15 18 Q22 14 29 18 L31 34 L26 34 L27 50 L22 50 L20 36 L18 50 L13 50 L16 34 L11 34 Z" fill="#2563eb" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
- <path d="M15 22 L7 31 M29 22 L37 31" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
- </svg>`;
+ el.innerHTML=`<svg viewBox="0 0 44 54"><circle cx="22" cy="9" r="7" fill="#ffd5a8" stroke="#fff" stroke-width="2"/><path d="M15 18 Q22 14 29 18 L31 34 L26 34 L27 50 L22 50 L20 36 L18 50 L13 50 L16 34 L11 34 Z" fill="#2563eb" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M15 22 L7 31 M29 22 L37 31" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`;
  return el;
 }
 function targetEl(n){
@@ -230,28 +230,11 @@ function targetEl(n){
  el.innerHTML=`<svg viewBox="0 0 38 46"><path d="M19 2C9 2 2 9 2 19c0 13 17 25 17 25s17-12 17-25C36 9 29 2 19 2z" fill="#f97316" stroke="#fff" stroke-width="3"/><circle cx="19" cy="18" r="8" fill="#fff"/><text x="19" y="22" text-anchor="middle" font-size="11" font-weight="900" fill="#f97316">${n}</text></svg>`;
  return el;
 }
-function boundaryEl(n){
- let el=document.createElement("div");el.className="boundary-pin";el.textContent=n;return el;
-}
-
-function polygonGeo(poly){
- if(poly.length<3)return {type:"FeatureCollection",features:[]};
- let coords=poly.map(p=>[p.lon,p.lat]);coords.push(coords[0]);
- return {type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[coords]}}]};
-}
-function lineGeo(poly){
- if(poly.length<2)return {type:"FeatureCollection",features:[]};
- return {type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"LineString",coordinates:poly.map(p=>[p.lon,p.lat])}}]};
-}
-function gridBounds(t){
- let b=box(S.boundary),w=(b.maxLon-b.minLon)/3,h=(b.maxLat-b.minLat)/3,c=Math.max(0,Math.min(2,Math.floor((t.lon-b.minLon)/w))),r=Math.max(0,Math.min(2,Math.floor((t.lat-b.minLat)/h)));
- let west=b.minLon+c*w,south=b.minLat+r*h;
- return {west,east:west+w,south,north:south+h};
-}
-function gridGeo(t){
- let g=gridBounds(t),c=[[g.west,g.south],[g.east,g.south],[g.east,g.north],[g.west,g.north],[g.west,g.south]];
- return {type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]};
-}
+function boundaryEl(n){let el=document.createElement("div");el.className="boundary-pin";el.textContent=n;return el}
+function polygonGeo(poly){if(poly.length<3)return{type:"FeatureCollection",features:[]};let c=poly.map(p=>[p.lon,p.lat]);c.push(c[0]);return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]}}
+function lineGeo(poly){if(poly.length<2)return{type:"FeatureCollection",features:[]};return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"LineString",coordinates:poly.map(p=>[p.lon,p.lat])}}]}}
+function gridBounds(t){let b=box(S.boundary),w=(b.maxLon-b.minLon)/3,h=(b.maxLat-b.minLat)/3,c=Math.max(0,Math.min(2,Math.floor((t.lon-b.minLon)/w))),r=Math.max(0,Math.min(2,Math.floor((t.lat-b.minLat)/h))),west=b.minLon+c*w,south=b.minLat+r*h;return{west,east:west+w,south,north:south+h}}
+function gridGeo(t){let g=gridBounds(t),c=[[g.west,g.south],[g.east,g.south],[g.east,g.north],[g.west,g.north],[g.west,g.south]];return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]}}
 function ensureAreaLayers(map){
  if(!map.getSource("boundary")){
    map.addSource("boundary",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
@@ -268,98 +251,70 @@ function ensureAreaLayers(map){
    map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
  }
 }
-
 function updateMapData(map){
- if(!map||!map.isStyleLoaded())return;
- ensureAreaLayers(map);
+ if(!map||!map.isStyleLoaded())return;ensureAreaLayers(map);
  map.getSource("boundary").setData(polygonGeo(S.boundary));
  map.getSource("boundary-line-src").setData(S.boundary.length===2?lineGeo(S.boundary):{type:"FeatureCollection",features:[]});
  let t=S.checkpoints[S.currentIndex];
  map.getSource("grid").setData(S.navMode==="medium"&&t?gridGeo(t):{type:"FeatureCollection",features:[]});
 }
-
 function fitBoundary(map){
- if(!map||!S.boundary.length)return;
- let b=box(S.boundary);
- map.fitBounds([[b.minLon,b.minLat],[b.maxLon,b.maxLat]],{padding:45,maxZoom:18,duration:500,bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0});
+ if(!map||!S.boundary.length)return;let b=box(S.boundary);
+ map.fitBounds([[b.minLon,b.minLat],[b.maxLon,b.maxLat]],{padding:45,maxZoom:18,duration:450,bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0});
 }
 function recenterMap(map){
  if(!map||!S.currentPos)return;
- map.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:Math.max(map.getZoom(),17),bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0,duration:500});
+ map.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:Math.max(map.getZoom(),17),bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0,duration:450});
 }
-function circularSmooth(oldVal,newVal,alpha=.22){
- if(oldVal==null)return newVal;
- let diff=((newVal-oldVal+540)%360)-180;
- return (oldVal+alpha*diff+360)%360;
-}
+function circularSmooth(oldVal,newVal,alpha=.22){if(oldVal==null)return newVal;let diff=((newVal-oldVal+540)%360)-180;return(oldVal+alpha*diff+360)%360}
 function updateHeading(p){
  let candidate=null,reliable=false;
- if(typeof p.coords.heading==="number"&&!Number.isNaN(p.coords.heading)&&p.coords.heading>=0 && (p.coords.speed==null||p.coords.speed>0.5)){
-   candidate=p.coords.heading;reliable=true;
- }else if(S.prevPos&&S.currentPos&&dist(S.prevPos,S.currentPos)>3){
-   candidate=bear(S.prevPos,S.currentPos);reliable=true;
- }
- if(reliable){
-   S.rawHeading=candidate;
-   S.smoothHeading=circularSmooth(S.smoothHeading,candidate,.25);
-   S.hasReliableHeading=true;
- }
+ if(typeof p.coords.heading==="number"&&!Number.isNaN(p.coords.heading)&&p.coords.heading>=0&&(p.coords.speed==null||p.coords.speed>0.5)){candidate=p.coords.heading;reliable=true}
+ else if(S.prevPos&&S.currentPos&&dist(S.prevPos,S.currentPos)>3){candidate=bear(S.prevPos,S.currentPos);reliable=true}
+ if(reliable){S.smoothHeading=circularSmooth(S.smoothHeading,candidate,.25);S.hasReliableHeading=true}
+}
+function updateCompassRoses(){
+ let setupBearing=S.setupMap?S.setupMap.getBearing():0,gameBearing=S.gameMap?S.gameMap.getBearing():0,fullBearing=S.fullMap?S.fullMap.getBearing():0;
+ $("setupCompassRose").style.transform=`rotate(${-setupBearing}deg)`;
+ $("gameCompassRose").style.transform=`rotate(${-gameBearing}deg)`;
+ $("fullCompassRose").style.transform=`rotate(${-fullBearing}deg)`;
 }
 function applyTravelBearing(){
- let bearingValue=S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0;
- ["gameMap","fullMap"].forEach(k=>{
-   let map=S[k];
-   if(map&&Math.abs((((map.getBearing()-bearingValue)+540)%360)-180)>2){
-     map.easeTo({bearing:bearingValue,duration:350});
-   }
- });
+ let b=S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0;
+ ["gameMap","fullMap"].forEach(k=>{let m=S[k];if(m&&Math.abs((((m.getBearing()-b)+540)%360)-180)>2)m.easeTo({bearing:b,duration:350})});
  $("travelNote").classList.toggle("hidden",!(S.mapMode==="travel"&&!S.hasReliableHeading));
- updateCompassNeedles();
+ updateCompassRoses();
 }
-function updateCompassNeedles(){
- let setupBearing=S.setupMap?S.setupMap.getBearing():0;
- let gameBearing=S.gameMap?S.gameMap.getBearing():0;
- let fullBearing=S.fullMap?S.fullMap.getBearing():0;
- $("setupCompassNeedle").style.transform=`rotate(${-setupBearing}deg)`;
- $("gameCompassNeedle").style.transform=`rotate(${-gameBearing}deg)`;
- $("fullCompassNeedle").style.transform=`rotate(${-fullBearing}deg)`;
-}
-
 function ensureSetupMap(){
  if(S.setupMap)return;
  S.setupMap=newMap("setupMap",[-3.38,51.75]);
- S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap);});
- S.setupMap.on("rotate",updateCompassNeedles);
+ S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
+ S.setupMap.on("rotate",updateCompassRoses);
 }
 function updateSetup(){
- ensureSetupMap();
- if(!S.currentPos)return;
+ ensureSetupMap();if(!S.currentPos)return;
  if(!S.setupPlayer)S.setupPlayer=new maplibregl.Marker({element:personEl(),anchor:"bottom"}).setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(S.setupMap);
  else S.setupPlayer.setLngLat([S.currentPos.lon,S.currentPos.lat]);
  S.boundaryMarkers.forEach(m=>m.remove());S.boundaryMarkers=[];
  S.boundary.forEach((p,i)=>S.boundaryMarkers.push(new maplibregl.Marker({element:boundaryEl(i+1)}).setLngLat([p.lon,p.lat]).addTo(S.setupMap)));
  if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
- if(S.boundary.length===0)S.setupMap.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:17,duration:300});
+ if(!S.boundary.length)S.setupMap.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:17,duration:300});
 }
-
 function startGPS(){
  if(!navigator.geolocation){alert("GPS is not supported on this device.");return}
  $("gpsBadge").textContent="GPS starting…";
  navigator.geolocation.watchPosition(p=>{
-   S.prevPos=S.currentPos;
-   S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};
-   updateHeading(p);
+   S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
    $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;
    updateSetup();updatePlayers();updateGame();applyTravelBearing();
- },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error";},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+ },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
 function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup()}
 function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup()}
-
 function createGameMap(container){
  let map=newMap(container,[S.currentPos.lon,S.currentPos.lat]);
- map.on("load",()=>{ensureAreaLayers(map);updateMapData(map);fitBoundary(map);drawTarget(map,container==="gameMap"?"game":"full");});
- map.on("rotate",updateCompassNeedles);
+ map.on("load",()=>{ensureAreaLayers(map);updateMapData(map);fitBoundary(map);drawTarget(map,container==="gameMap"?"game":"full")});
+ map.on("rotate",updateCompassRoses);
  return map;
 }
 function drawTarget(map,prefix){
@@ -407,12 +362,8 @@ function updateGame(){
  if(S.navMode==="easy")$("bearingText").textContent="Follow the checkpoint pin";
  else if(S.navMode==="medium")$("bearingText").textContent="Checkpoint is somewhere in the highlighted grid area";
  else $("bearingText").textContent=`Head ${comp(bear(S.currentPos,t))}`;
- if(S.navMode==="medium"){
-   let g=gridBounds(t),inCell=S.currentPos.lat>=g.south&&S.currentPos.lat<=g.north&&S.currentPos.lon>=g.west&&S.currentPos.lon<=g.east;
-   $("zoneText").classList.toggle("hidden",!inCell);$("zoneText").textContent="YOU'RE IN THE TARGET AREA — use the distance to find the checkpoint";
- }
- S.lastDistance=d;hud(d);updateHardCompass();
- if(d<=r&&!S.unlocked)unlock();
+ if(S.navMode==="medium"){let g=gridBounds(t),inCell=S.currentPos.lat>=g.south&&S.currentPos.lat<=g.north&&S.currentPos.lon>=g.west&&S.currentPos.lon<=g.east;$("zoneText").classList.toggle("hidden",!inCell);$("zoneText").textContent="YOU'RE IN THE TARGET AREA — use the distance to find the checkpoint"}
+ S.lastDistance=d;hud(d);updateHardCompass();if(d<=r&&!S.unlocked)unlock();
 }
 function hud(d=S.lastDistance){$("hudCheckpoint").textContent=`${S.currentIndex+1} of ${S.checkpoints.length}`;$("hudDistance").textContent=d==null?"—":Math.round(d)+" m";$("hudHint").textContent=S.navMode==="easy"?"Follow the checkpoint pin":"Checkpoint is somewhere in the highlighted area"}
 function label(c){return{maths:"Maths",science:"Science",geography:"Geography",general:"General knowledge",logic:"Logic & puzzles"}[c]}
@@ -425,27 +376,18 @@ function unlock(){
 function answer(choice,correct){
  if(choice===correct){S.score++;$("feedback").textContent="Correct! Next checkpoint unlocked."}else $("feedback").textContent=`Not quite. The answer was ${correct}.`;
  [...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);
- setTimeout(()=>{
-   S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;
-   if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}
-   updateGameUI();updateGame();
- },1200);
+ setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}updateGameUI();updateGame()},1200);
 }
 function openFull(){
  if(S.navMode==="hard")return;
  $("fullscreenMapModal").classList.remove("hidden");
- setTimeout(()=>{
-   if(!S.fullMap)S.fullMap=createGameMap("fullMap");
-   else{S.fullMap.resize();updateMapData(S.fullMap);drawTarget(S.fullMap,"full");}
-   updatePlayers();recenterMap(S.fullMap);hud();updateCompassNeedles();
- },100);
+ setTimeout(()=>{if(!S.fullMap)S.fullMap=createGameMap("fullMap");else{S.fullMap.resize();updateMapData(S.fullMap);drawTarget(S.fullMap,"full")}updatePlayers();recenterMap(S.fullMap);hud();updateCompassRoses()},100);
 }
 function closeFull(){$("fullscreenMapModal").classList.add("hidden")}
 function setMapMode(m){
  S.mapMode=m;$("northUpBtn").classList.toggle("active",m==="north");$("travelUpBtn").classList.toggle("active",m==="travel");
- if(m==="north"){if(S.gameMap)S.gameMap.easeTo({bearing:0,duration:350});if(S.fullMap)S.fullMap.easeTo({bearing:0,duration:350})}
- else applyTravelBearing();
- updateCompassNeedles();
+ if(m==="north"){if(S.gameMap)S.gameMap.easeTo({bearing:0,duration:350});if(S.fullMap)S.fullMap.easeTo({bearing:0,duration:350})}else applyTravelBearing();
+ updateCompassRoses();
 }
 
 $("startGpsBtn").onclick=startGPS;
