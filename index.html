@@ -378,10 +378,40 @@ function answer(choice,correct){
  [...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);
  setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}updateGameUI();updateGame()},1200);
 }
+function refreshFullMapState(){
+ if(!S.fullMap)return;
+ S.fullMap.resize();
+ const redraw=()=>{
+   if(!S.fullMap||!S.fullMap.isStyleLoaded())return;
+   ensureAreaLayers(S.fullMap);
+   updateMapData(S.fullMap);
+   drawTarget(S.fullMap,"full");
+   updatePlayers();
+   hud();
+   updateCompassRoses();
+   if(S.mapMode==="travel"&&S.hasReliableHeading)S.fullMap.setBearing(S.smoothHeading);
+ };
+ redraw();
+ requestAnimationFrame(()=>{S.fullMap.resize();redraw()});
+ setTimeout(()=>{S.fullMap.resize();redraw()},180);
+}
 function openFull(){
  if(S.navMode==="hard")return;
  $("fullscreenMapModal").classList.remove("hidden");
- setTimeout(()=>{if(!S.fullMap)S.fullMap=createGameMap("fullMap");else{S.fullMap.resize();updateMapData(S.fullMap);drawTarget(S.fullMap,"full")}updatePlayers();recenterMap(S.fullMap);hud();updateCompassRoses()},100);
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   if(!S.fullMap){
+     S.fullMap=createGameMap("fullMap");
+     S.fullMap.once("load",()=>{
+       refreshFullMapState();
+       recenterMap(S.fullMap);
+       S.fullMap.once("idle",refreshFullMapState);
+     });
+   }else{
+     refreshFullMapState();
+     recenterMap(S.fullMap);
+     S.fullMap.once("idle",refreshFullMapState);
+   }
+ }));
 }
 function closeFull(){$("fullscreenMapModal").classList.add("hidden")}
 function setMapMode(m){

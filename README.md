@@ -1,17 +1,13 @@
-# Field Quest v0.7
+# Field Quest v0.8
 
-Polish release based on v0.6 feedback.
+Focused full-screen map reliability fix based on v0.7.
 
 Changes:
-- Kept MapLibre.
-- Switched to a more detailed OpenStreetMap HOT raster style.
-- Rebuilt the normal game-map controls into a proper control bar so Expand Map and Re-centre no longer overlap.
-- Kept Re-centre controls on setup, normal game and full-screen map views.
-- Redesigned the mini-compass:
-  - The whole N/E/S/W compass rose rotates with the map.
-  - The top marker stays fixed and represents the current screen/travel direction.
-  - In North Up, N stays at the top.
-  - In Travel Up, the compass rose rotates so you can see where north lies relative to your direction of travel.
-- Existing Travel Up logic, heading smoothing, child marker, Medium grid mode and Hard compass navigation retained.
+- Kept the v0.7 MapLibre map, map style, control layout and compass behaviour unchanged.
+- Full-screen map now waits for the visible container to receive a real size before initialising/redrawing.
+- Full-screen expansion now explicitly refreshes the current boundary polygon, Easy-mode checkpoint pin, Medium-mode grid area and player marker.
+- Added redraw passes after resize and again when MapLibre becomes idle, preventing the first expansion from showing an incomplete map.
+- Reopening full screen always rebuilds the visual state for the current checkpoint rather than relying on cached map layers.
+- Updated the service-worker cache to v0.8.
 
 Upload these files to the existing GitHub repository and commit the replacements.
