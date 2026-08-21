@@ -1,13 +1,14 @@
-# Field Quest v0.8
+# Field Quest v0.9
 
-Focused full-screen map reliability fix based on v0.7.
+Stability release based on v0.8 feedback.
 
 Changes:
-- Kept the v0.7 MapLibre map, map style, control layout and compass behaviour unchanged.
-- Full-screen map now waits for the visible container to receive a real size before initialising/redrawing.
-- Full-screen expansion now explicitly refreshes the current boundary polygon, Easy-mode checkpoint pin, Medium-mode grid area and player marker.
-- Added redraw passes after resize and again when MapLibre becomes idle, preventing the first expansion from showing an incomplete map.
-- Reopening full screen always rebuilds the visual state for the current checkpoint rather than relying on cached map layers.
-- Updated the service-worker cache to v0.8.
+- Reverted the map tiles to the simpler OpenStreetMap style used in v0.6.
+- Kept MapLibre and the working North Up / Travel Up behaviour.
+- Reworked boundary and target rendering so map state is persistent.
+- Boundary, current checkpoint, player marker and Medium grid are re-applied automatically after MapLibre style loads.
+- Full-screen expansion now resizes the map first, then synchronises the current persistent game state.
+- Current target state is refreshed every time full-screen mode opens.
+- Existing button layout, compass design, Travel Up smoothing and child marker retained.
 
 Upload these files to the existing GitHub repository and commit the replacements.

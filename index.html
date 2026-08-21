@@ -207,10 +207,7 @@ function richerStyle(){
  return {
    version:8,
    sources:{
-     osm:{type:"raster",tiles:[
-       "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-       "https://b.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-     ],tileSize:256,attribution:"© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team"}
+     osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}
    },
    layers:[{id:"osm",type:"raster",source:"osm"}]
  };
@@ -311,9 +308,43 @@ function startGPS(){
 }
 function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup()}
 function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup()}
+
+function syncPersistentState(map,prefix){
+ if(!map)return;
+ const apply=()=>{
+   if(!map.isStyleLoaded())return;
+   ensureAreaLayers(map);
+   updateMapData(map);
+   drawTarget(map,prefix);
+   if(S.currentPos){
+     const markerKey=prefix+"Player";
+     if(!S[markerKey]){
+       S[markerKey]=new maplibregl.Marker({element:personEl(),anchor:"bottom"})
+         .setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(map);
+     }else{
+       S[markerKey].setLngLat([S.currentPos.lon,S.currentPos.lat]);
+     }
+   }
+ };
+ if(map.isStyleLoaded()) apply();
+ else map.once("style.load",apply);
+}
+
+function bindPersistentState(map,prefix){
+ if(!map || map.__fieldQuestPersistentBound)return;
+ map.__fieldQuestPersistentBound=true;
+ map.on("style.load",()=>syncPersistentState(map,prefix));
+}
+
 function createGameMap(container){
+ let prefix=container==="gameMap"?"game":"full";
  let map=newMap(container,[S.currentPos.lon,S.currentPos.lat]);
- map.on("load",()=>{ensureAreaLayers(map);updateMapData(map);fitBoundary(map);drawTarget(map,container==="gameMap"?"game":"full")});
+ bindPersistentState(map,prefix);
+ map.on("load",()=>{
+   ensureAreaLayers(map);
+   syncPersistentState(map,prefix);
+   fitBoundary(map);
+ });
  map.on("rotate",updateCompassRoses);
  return map;
 }
@@ -339,7 +370,7 @@ function generate(){
  S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
  $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
- if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{updateMapData(S.gameMap);drawTarget(S.gameMap,"game");fitBoundary(S.gameMap)}
+ if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncPersistentState(S.gameMap,"game");fitBoundary(S.gameMap)}
  updatePlayers();updateGameUI();updateGame();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
 function updateHardCompass(){
@@ -350,8 +381,8 @@ function updateHardCompass(){
 }
 function updateGameUI(){
  let n=S.checkpoints.length;$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
- if(S.gameMap){drawTarget(S.gameMap,"game");updateMapData(S.gameMap)}
- if(S.fullMap){drawTarget(S.fullMap,"full");updateMapData(S.fullMap)}
+ if(S.gameMap)syncPersistentState(S.gameMap,"game");
+ if(S.fullMap)syncPersistentState(S.fullMap,"full");
  updateHardCompass();hud();
 }
 function updateGame(){
@@ -398,20 +429,24 @@ function refreshFullMapState(){
 function openFull(){
  if(S.navMode==="hard")return;
  $("fullscreenMapModal").classList.remove("hidden");
- requestAnimationFrame(()=>requestAnimationFrame(()=>{
-   if(!S.fullMap){
-     S.fullMap=createGameMap("fullMap");
-     S.fullMap.once("load",()=>{
-       refreshFullMapState();
+ requestAnimationFrame(()=>{
+   requestAnimationFrame(()=>{
+     if(!S.fullMap){
+       S.fullMap=createGameMap("fullMap");
+     }else{
+       S.fullMap.resize();
+       syncPersistentState(S.fullMap,"full");
+     }
+     updatePlayers();
+     if(S.fullMap){
+       S.fullMap.resize();
+       syncPersistentState(S.fullMap,"full");
        recenterMap(S.fullMap);
-       S.fullMap.once("idle",refreshFullMapState);
-     });
-   }else{
-     refreshFullMapState();
-     recenterMap(S.fullMap);
-     S.fullMap.once("idle",refreshFullMapState);
-   }
- }));
+     }
+     hud();
+     updateCompassRoses();
+   });
+ });
 }
 function closeFull(){$("fullscreenMapModal").classList.add("hidden")}
 function setMapMode(m){
