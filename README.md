@@ -1,10 +1,19 @@
-# Field Quest v0.5
+# Field Quest v0.6
 
-Changes from v0.4:
-- Hard mode now uses reliable GPS compass bearing + distance instead of phone-relative orientation arrow.
-- Age 9 has its own simpler question set; age targeting now uses single-year levels where available.
-- North Up / Travel Up map toggle added (Travel Up is experimental in browser maps).
-- Compass indicator shown during setup and in Easy/Medium/full-screen maps.
-- Hard mode has a larger compass rose.
-- Player GPS marker is now a kid-friendly person icon.
-- Existing boundary, checkpoint spread, Medium grid mode and full-screen HUD retained.
+Navigation/map bug-fix release.
+
+Changes from v0.5:
+- Replaced Leaflet game/setup maps with MapLibre GL JS.
+- Travel Up now uses MapLibre's native map bearing rather than CSS transforms.
+- Travel heading only updates when GPS provides a meaningful heading or movement exceeds a small threshold.
+- Heading changes are smoothed to reduce jumpiness.
+- North Up and Travel Up no longer use incompatible coordinate transforms.
+- Added Re-centre buttons to setup map, normal game map and full-screen map.
+- Replaced the blue GPS circle with a custom child/person SVG marker.
+- Compass remains visible on setup, Easy, Medium and full-screen views.
+- Hard mode keeps reliable compass-direction navigation rather than phone-relative orientation.
+- Existing controlled-random checkpoints, boundary markers and Medium grid mode retained.
+
+Travel Up remains dependent on GPS heading quality. It should behave much more like sat-nav while moving, but will deliberately avoid rotating when there is no reliable travel direction.
+
+Upload these files to the existing GitHub repository and commit the replacements.
