@@ -309,40 +309,80 @@ function startGPS(){
 function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup()}
 function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup()}
 
-function syncPersistentState(map,prefix){
- if(!map)return;
- const apply=()=>{
-   if(!map.isStyleLoaded())return;
-   ensureAreaLayers(map);
-   updateMapData(map);
-   drawTarget(map,prefix);
-   if(S.currentPos){
-     const markerKey=prefix+"Player";
-     if(!S[markerKey]){
-       S[markerKey]=new maplibregl.Marker({element:personEl(),anchor:"bottom"})
-         .setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(map);
-     }else{
-       S[markerKey].setLngLat([S.currentPos.lon,S.currentPos.lat]);
-     }
-   }
- };
- if(map.isStyleLoaded()) apply();
- else map.once("style.load",apply);
+function ensureGameSources(map){
+ if(!map || !map.isStyleLoaded()) return false;
+
+ if(!map.getSource("boundary")){
+   map.addSource("boundary",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"boundary-fill",type:"fill",source:"boundary",paint:{"fill-color":"#22c55e","fill-opacity":0.08}});
+   map.addLayer({id:"boundary-line",type:"line",source:"boundary",paint:{"line-color":"#22c55e","line-width":3}});
+ }
+ if(!map.getSource("boundary-line-src")){
+   map.addSource("boundary-line-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"boundary-line-open",type:"line",source:"boundary-line-src",paint:{"line-color":"#22c55e","line-width":3}});
+ }
+ if(!map.getSource("grid")){
+   map.addSource("grid",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"grid-fill",type:"fill",source:"grid",paint:{"fill-color":"#f97316","fill-opacity":0.20}});
+   map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
+ }
+ return true;
 }
 
-function bindPersistentState(map,prefix){
- if(!map || map.__fieldQuestPersistentBound)return;
- map.__fieldQuestPersistentBound=true;
- map.on("style.load",()=>syncPersistentState(map,prefix));
+function syncMapState(map,prefix){
+ if(!map) return;
+
+ // HTML markers do not depend on style readiness.
+ if(S.currentPos){
+   const playerKey=prefix+"Player";
+   if(!S[playerKey]){
+     S[playerKey]=new maplibregl.Marker({element:personEl(),anchor:"bottom"})
+       .setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(map);
+   } else {
+     S[playerKey].setLngLat([S.currentPos.lon,S.currentPos.lat]);
+   }
+ }
+
+ const targetKey=prefix+"Target";
+ if(S[targetKey]){
+   S[targetKey].remove();
+   S[targetKey]=null;
+ }
+ const target=S.checkpoints[S.currentIndex];
+ if(target && S.navMode==="easy"){
+   S[targetKey]=new maplibregl.Marker({element:targetEl(S.currentIndex+1),anchor:"bottom"})
+     .setLngLat([target.lon,target.lat]).addTo(map);
+ }
+
+ // Polygon/grid layers do depend on style readiness.
+ if(ensureGameSources(map)){
+   map.getSource("boundary").setData(polygonGeo(S.boundary));
+   map.getSource("boundary-line-src").setData(
+     S.boundary.length===2 ? lineGeo(S.boundary) : {type:"FeatureCollection",features:[]}
+   );
+   map.getSource("grid").setData(
+     S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
+   );
+ }
+}
+
+function bindMapState(map,prefix){
+ if(!map || map.__fieldQuestBound) return;
+ map.__fieldQuestBound=true;
+ map.on("style.load",()=>syncMapState(map,prefix));
+ map.on("idle",()=>{
+   if(map.isStyleLoaded()){
+     if(!map.getSource("boundary") || !map.getLayer("boundary-line")) syncMapState(map,prefix);
+   }
+ });
 }
 
 function createGameMap(container){
  let prefix=container==="gameMap"?"game":"full";
  let map=newMap(container,[S.currentPos.lon,S.currentPos.lat]);
- bindPersistentState(map,prefix);
+ bindMapState(map,prefix);
  map.on("load",()=>{
-   ensureAreaLayers(map);
-   syncPersistentState(map,prefix);
+   syncMapState(map,prefix);
    fitBoundary(map);
  });
  map.on("rotate",updateCompassRoses);
@@ -370,7 +410,7 @@ function generate(){
  S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
  $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
- if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncPersistentState(S.gameMap,"game");fitBoundary(S.gameMap)}
+ if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
  updatePlayers();updateGameUI();updateGame();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
 function updateHardCompass(){
@@ -381,8 +421,8 @@ function updateHardCompass(){
 }
 function updateGameUI(){
  let n=S.checkpoints.length;$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
- if(S.gameMap)syncPersistentState(S.gameMap,"game");
- if(S.fullMap)syncPersistentState(S.fullMap,"full");
+ if(S.gameMap)syncMapState(S.gameMap,"game");
+ if(S.fullMap)syncMapState(S.fullMap,"full");
  updateHardCompass();hud();
 }
 function updateGame(){
@@ -435,12 +475,12 @@ function openFull(){
        S.fullMap=createGameMap("fullMap");
      }else{
        S.fullMap.resize();
-       syncPersistentState(S.fullMap,"full");
+       syncMapState(S.fullMap,"full");
      }
      updatePlayers();
      if(S.fullMap){
        S.fullMap.resize();
-       syncPersistentState(S.fullMap,"full");
+       syncMapState(S.fullMap,"full");
        recenterMap(S.fullMap);
      }
      hud();
