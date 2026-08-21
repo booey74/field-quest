@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v0.7</title>
+<title>Field Quest v1.1 v0.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -58,8 +58,14 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </style>
 </head>
 <body>
+
+<div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
+  <div style="font-size:2rem;font-weight:900">Field Quest</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.1</div>
+</div>
+
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><span id="gpsBadge" class="badge">GPS waiting</span></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -143,6 +149,22 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <div class="hud bottom-hud"><div><span class="hud-label">DISTANCE</span><strong id="hudDistance">—</strong></div><div id="hudHint" class="hud-hint">Follow the pin</div></div>
 </div>
 
+
+<section class="card" id="diagCard">
+<h2>v1.1 diagnostics</h2>
+<p class="small">Temporary test information for the map-state issue.</p>
+<div class="stats">
+  <div><span>Boundary</span><strong id="diagBoundary">0 points</strong></div>
+  <div><span>Checkpoint</span><strong id="diagCheckpoint">none</strong></div>
+  <div><span>Game marker</span><strong id="diagGameMarker">off</strong></div>
+  <div><span>Boundary layer</span><strong id="diagBoundaryLayer">off</strong></div>
+</div>
+<div class="stats">
+  <div><span>Full marker</span><strong id="diagFullMarker">off</strong></div>
+  <div><span>Full boundary</span><strong id="diagFullBoundary">off</strong></div>
+</div>
+</section>
+
 <section class="card small"><h2>Safety</h2><p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p></section>
 </main>
 
@@ -151,7 +173,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null
 };
 
 const Q=[
@@ -289,7 +311,8 @@ function ensureSetupMap(){
  S.setupMap.on("rotate",updateCompassRoses);
 }
 function updateSetup(){
- ensureSetupMap();if(!S.currentPos)return;
+ ensureSetupMap();
+setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);if(!S.currentPos)return;
  if(!S.setupPlayer)S.setupPlayer=new maplibregl.Marker({element:personEl(),anchor:"bottom"}).setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(S.setupMap);
  else S.setupPlayer.setLngLat([S.currentPos.lon,S.currentPos.lat]);
  S.boundaryMarkers.forEach(m=>m.remove());S.boundaryMarkers=[];
@@ -306,8 +329,8 @@ function startGPS(){
    updateSetup();updatePlayers();updateGame();applyTravelBearing();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
-function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup()}
-function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup()}
+function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup();updateDiagnostics()}
+function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup();updateDiagnostics()}
 
 function ensureGameSources(map){
  if(!map || !map.isStyleLoaded()) return false;
@@ -329,47 +352,86 @@ function ensureGameSources(map){
  return true;
 }
 
-function syncMapState(map,prefix){
- if(!map) return;
 
- // HTML markers do not depend on style readiness.
+function updateDiagnostics(){
+ const b=S.boundary||[];
+ const t=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
+ $("diagBoundary").textContent=b.length+" points";
+ $("diagCheckpoint").textContent=t?`${t.lat.toFixed(5)}, ${t.lon.toFixed(5)}`:"none";
+ $("diagGameMarker").textContent=S.gameTargetMarker?"active":"off";
+ $("diagFullMarker").textContent=S.fullTargetMarker?"active":"off";
+ $("diagBoundaryLayer").textContent=(S.gameMap&&S.gameMap.getSource&&S.gameMap.getSource("boundary"))?"active":"off";
+ $("diagFullBoundary").textContent=(S.fullMap&&S.fullMap.getSource&&S.fullMap.getSource("boundary"))?"active":"off";
+}
+
+function ensurePermanentTargetMarker(map,prefix){
+ const key=prefix==="game"?"gameTargetMarker":"fullTargetMarker";
+ const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
+
+ if(!target || S.navMode!=="easy"){
+   if(S[key]) S[key].getElement().style.display="none";
+   updateDiagnostics();
+   return;
+ }
+
+ if(!S[key]){
+   S[key]=new maplibregl.Marker({element:targetEl(S.currentIndex+1),anchor:"bottom"})
+     .setLngLat([target.lon,target.lat]).addTo(map);
+ }else{
+   S[key].setLngLat([target.lon,target.lat]);
+   S[key].getElement().style.display="";
+   // Refresh checkpoint number when advancing.
+   S[key].getElement().innerHTML=targetEl(S.currentIndex+1).innerHTML;
+ }
+ updateDiagnostics();
+}
+
+function ensurePersistentBoundary(map){
+ if(!map || !map.isStyleLoaded()) return false;
+ ensureGameSources(map);
+ map.getSource("boundary").setData(polygonGeo(S.boundary));
+ map.getSource("boundary-line-src").setData(
+   S.boundary.length===2 ? lineGeo(S.boundary) : {type:"FeatureCollection",features:[]}
+ );
+ const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
+ map.getSource("grid").setData(
+   S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
+ );
+ return true;
+}
+
+function syncMapState(map,prefix){
+ if(!map)return;
+
  if(S.currentPos){
    const playerKey=prefix+"Player";
    if(!S[playerKey]){
      S[playerKey]=new maplibregl.Marker({element:personEl(),anchor:"bottom"})
        .setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(map);
-   } else {
+   }else{
      S[playerKey].setLngLat([S.currentPos.lon,S.currentPos.lat]);
    }
  }
 
- const targetKey=prefix+"Target";
- if(S[targetKey]){
-   S[targetKey].remove();
-   S[targetKey]=null;
- }
- const target=S.checkpoints[S.currentIndex];
- if(target && S.navMode==="easy"){
-   S[targetKey]=new maplibregl.Marker({element:targetEl(S.currentIndex+1),anchor:"bottom"})
-     .setLngLat([target.lon,target.lat]).addTo(map);
+ ensurePermanentTargetMarker(map,prefix);
+
+ if(map.isStyleLoaded()){
+   ensurePersistentBoundary(map);
+ }else{
+   map.once("style.load",()=>{
+     ensurePersistentBoundary(map);
+     ensurePermanentTargetMarker(map,prefix);
+     updateDiagnostics();
+   });
  }
 
- // Polygon/grid layers do depend on style readiness.
- if(ensureGameSources(map)){
-   map.getSource("boundary").setData(polygonGeo(S.boundary));
-   map.getSource("boundary-line-src").setData(
-     S.boundary.length===2 ? lineGeo(S.boundary) : {type:"FeatureCollection",features:[]}
-   );
-   map.getSource("grid").setData(
-     S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
-   );
- }
+ updateDiagnostics();
 }
 
 function bindMapState(map,prefix){
  if(!map || map.__fieldQuestBound) return;
  map.__fieldQuestBound=true;
- map.on("style.load",()=>syncMapState(map,prefix));
+ map.on("style.load",()=>{ensurePersistentBoundary(map);ensurePermanentTargetMarker(map,prefix);updateDiagnostics()});
  map.on("idle",()=>{
    if(map.isStyleLoaded()){
      if(!map.getSource("boundary") || !map.getLayer("boundary-line")) syncMapState(map,prefix);
@@ -389,10 +451,9 @@ function createGameMap(container){
  return map;
 }
 function drawTarget(map,prefix){
- if(S[prefix+"Target"]){S[prefix+"Target"].remove();S[prefix+"Target"]=null}
- let t=S.checkpoints[S.currentIndex];
- if(t&&S.navMode==="easy")S[prefix+"Target"]=new maplibregl.Marker({element:targetEl(S.currentIndex+1),anchor:"bottom"}).setLngLat([t.lon,t.lat]).addTo(map);
- if(map.isStyleLoaded())updateMapData(map);
+ ensurePermanentTargetMarker(map,prefix);
+ if(map && map.isStyleLoaded()) ensurePersistentBoundary(map);
+ updateDiagnostics();
 }
 function updatePlayers(){
  if(!S.currentPos)return;
@@ -411,7 +472,7 @@ function generate(){
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
  $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
  if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
- updatePlayers();updateGameUI();updateGame();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
+ updatePlayers();updateGameUI();updateGame();updateDiagnostics();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
 function updateHardCompass(){
  if(S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length)return;
@@ -509,6 +570,7 @@ $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
 
 ensureSetupMap();
+setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
 </body>
