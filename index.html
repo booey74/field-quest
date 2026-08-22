@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.4</title>
+<title>Field Quest v1.5</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -69,11 +69,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.4</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.5</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.4</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.5</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -117,7 +117,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card hidden" id="gameCard">
-<div class="game-head"><div><p class="eyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div><div class="score" id="scoreText">0 / 0</div></div>
+<div class="game-head"><div><p class="eyebrow" id="checkpointEyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div><div class="score" id="scoreText">0 / 0</div></div>
 
 <div id="gameMapWrap" class="map-wrap">
   <div id="gameMap"></div>
@@ -517,6 +517,11 @@ function generate(){
  count=Math.min(count,p.length);
  S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
+ $("checkpointEyebrow").textContent="NEXT CHECKPOINT";
+ $("checkpointLabel").textContent="Checkpoint 1";
+ $("scoreText").textContent=`0 / ${S.checkpoints.length}`;
+ $("zoneText").textContent="";$("zoneText").classList.add("hidden");
+ $("bearingText").textContent="Waiting for GPS…";$("distanceText").textContent="—";$("progressBar").style.width="0%";
  $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
  if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
  updatePlayers();updateGameUI();updateGame();updateDiagnostics();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
@@ -544,18 +549,22 @@ function updateHardCompass(){
  $("hardCompassLabel").textContent=S.hasReliableHeading?`Head ${comp(targetBearing)}`:`Head ${comp(targetBearing)} • getting direction…`;
 }
 function updateGameUI(){
- let n=S.checkpoints.length;$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
+ let n=S.checkpoints.length;$("checkpointEyebrow").textContent="NEXT CHECKPOINT";$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("zoneText").textContent="";$("zoneText").classList.add("hidden");$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
  if(S.gameMap)syncMapState(S.gameMap,"game");
  if(S.fullMap)syncMapState(S.fullMap,"full");
  updateHardCompass();hud();
 }
 
-function clearCompletedNavigation(){
-  if(S.gameTargetMarker){S.gameTargetMarker.remove();S.gameTargetMarker=null}
-  if(S.fullTargetMarker){S.fullTargetMarker.remove();S.fullTargetMarker=null}
-  if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}
-  if(S.fullTarget){S.fullTarget.remove();S.fullTarget=null}
+function enterCompletedGameState(){
+  // Remove all active target markers.
+  for(const key of ["gameTargetMarker","fullTargetMarker","gameTarget","fullTarget"]){
+    if(S[key]){
+      try{S[key].remove()}catch(e){}
+      S[key]=null;
+    }
+  }
 
+  // Remove mode-specific target/search overlays from both maps.
   for(const map of [S.gameMap,S.fullMap]){
     if(!map)continue;
     try{
@@ -564,17 +573,30 @@ function clearCompletedNavigation(){
     }catch(e){}
   }
 
-  const hard=$("hardNavPanel"); if(hard)hard.classList.add("hidden");
+  // Hide all active navigation UI that must not survive completion.
+  $("hardNavPanel").classList.add("hidden");
+  $("zoneText").textContent="";
+  $("zoneText").classList.add("hidden");
+  $("challengePanel").classList.add("hidden");
 
-  for(const id of ["navHint","mediumHint","searchHint","hardCompassLabel"]){
-    const el=$(id); if(el)el.textContent="";
-  }
+  // Explicit completed-game header.
+  $("checkpointEyebrow").textContent="GAME COMPLETE";
+  $("checkpointLabel").textContent="Finished";
+  $("scoreText").textContent=`${S.score} / ${S.checkpoints.length}`;
 
-  const distance=$("distanceText"); if(distance)distance.textContent="🏁";
-  const bearing=$("bearingText"); if(bearing)bearing.textContent="";
+  // Completion message only: no stale distance/bearing/target guidance.
+  $("distanceText").textContent="🏁";
+  $("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;
+  $("progressBar").style.width="100%";
 
-  updateMapData(S.gameMap);
-  updateMapData(S.fullMap);
+  // Full-screen HUD must not imply another checkpoint exists.
+  $("hudCheckpoint").textContent="Complete";
+  $("hudDistance").textContent="—";
+  $("hudHint").textContent="Game complete";
+
+  // Keep map, boundary and live player position as final-location context.
+  if(S.gameMap)updateMapData(S.gameMap);
+  if(S.fullMap)updateMapData(S.fullMap);
 }
 
 function updateGame(){
@@ -600,9 +622,7 @@ function answer(choice,correct){
  if(choice===correct){S.score++;$("feedback").textContent="Correct! Next checkpoint unlocked."}else $("feedback").textContent=`Not quite. The answer was ${correct}.`;
  [...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);
  setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){
-  clearCompletedNavigation();
-  $("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;
-  $("challengePanel").classList.add("hidden");
+  enterCompletedGameState();
   return
 }updateGameUI();updateGame()},1200);
 }

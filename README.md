@@ -1,17 +1,24 @@
-# Field Quest v1.4
+# Field Quest v1.5
 
-Completion-state consistency fix built from v1.3.
+Shared completed-game state built from v1.4.
 
-## Changes
-- Shared completion clean-up for Easy, Medium and Hard.
-- Removes final checkpoint marker.
-- Clears Medium grid/search overlay and stale guidance.
-- Hides Hard compass at completion.
-- Keeps map, boundary and live player position visible.
-- Keeps final score and End game action visible.
-- Service-worker cache updated to v1.4.
+## What changed
+All navigation modes now use one explicit completed-game state.
 
-## Acceptance focus
-- Complete Easy, Medium and Hard games and confirm each has the same clean end-state.
-- Confirm no target-specific graphics or guidance remain after completion.
-- Confirm map, boundary, player marker, final score and End game remain visible.
+When the final checkpoint is completed:
+- Remove the active checkpoint/target marker.
+- Clear Medium-mode target/search overlays.
+- Hide the Hard-mode compass.
+- Clear and hide `zoneText` / target-area guidance.
+- Replace `NEXT CHECKPOINT` with `GAME COMPLETE`.
+- Replace the checkpoint label with `Finished`.
+- Remove live distance/bearing guidance and show only the completion message.
+- Set the progress bar to 100%.
+- Clear the full-screen HUD's live checkpoint/distance guidance.
+- Keep the map, boundary and live player position visible.
+- Keep the finish flag, final score and End game action visible.
+
+Starting a new game explicitly restores the normal live-game header and navigation state.
+
+## Test focus
+Complete Easy, Medium and Hard games and confirm all three reach the same clean end state, then run the standard regression suite.
