@@ -1,30 +1,26 @@
-# Field Quest v1.2
+# Field Quest v1.3
 
-Field-test refinement release built from the stable v1.1 map-state architecture.
+Hard-mode compass refinement built from stable v1.2.
 
 ## Changes
-- Removed temporary v1.1 diagnostics panel.
-- Kept visible version number on splash screen and main UI.
-- Faster Travel Up response:
-  - stronger heading smoothing response,
-  - faster reaction to large direction changes,
-  - GPS fallback heading can update after ~2 m of movement,
-  - shorter map-bearing animation.
-- Follow-player map behaviour:
-  - setup, game and full-screen maps keep the player centred during GPS movement,
-  - manually dragging a map pauses follow mode,
-  - Re-centre restores follow mode.
-- Full-screen zoom controls moved above the bottom HUD so they no longer overlap.
-- Completed boundaries now show approximate play area in square metres (m²).
-- Service worker cache updated to v1.2 and navigation uses network-first loading to reduce stale-build confusion.
+- Hard-mode orange checkpoint arrow now starts from the exact centre of the compass.
+- Compass cardinals rotate using the same smoothed heading source used by Travel Up.
+- A fixed green marker at the top represents the direction the player is currently facing.
+- The orange arrow points to the checkpoint relative to the player's current facing direction:
+  - Up = ahead
+  - Right = checkpoint to the right
+  - Left = checkpoint to the left
+  - Down = checkpoint behind
+- Existing text cue such as “Head SE” remains as backup guidance.
+- Hard-mode compass hides after the final checkpoint so the completed-game state is cleaner.
+- Easy and Medium modes are unchanged.
+- Service-worker cache updated to v1.3.
 
-## Regression checks
-- Boundary and checkpoint pin appear immediately.
-- Boundary/pin remain visible through repeated expand/collapse.
-- North Up / Travel Up switching works.
-- Manual pan pauses follow; Re-centre restores it.
-- Medium grid mode.
-- Hard compass mode.
-- Multiple checkpoint progression.
-
-Upload all files to the existing GitHub repository and replace the previous versions.
+## Test focus
+- Confirm splash/main UI show v1.3.
+- In Hard mode, walk in several different directions and confirm N/E/S/W rotate relative to current heading.
+- Confirm orange arrow always originates in the compass centre.
+- Confirm turning toward the checkpoint makes the orange arrow move toward the top.
+- Confirm checkpoint distance and “Head …” text remain correct.
+- Complete the final checkpoint and confirm the compass disappears.
+- Regression-check Easy and Medium modes.

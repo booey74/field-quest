@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.2</title>
+<title>Field Quest v1.3</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -42,10 +42,18 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .compass-rose-mini .e{right:4px;top:50%;transform:translateY(-50%)}
 .compass-rose-mini .w{left:4px;top:50%;transform:translateY(-50%)}
 .heading-marker{position:absolute;top:3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #f8fafc;z-index:2}
-.hard-nav{text-align:center;padding:20px 10px}.compass-rose{position:relative;width:180px;height:180px;border:3px solid #64748b;border-radius:50%;background:#0b1220;margin:0 auto 12px}
-.compass-rose .dir{position:absolute;font-weight:900}.n2{top:8px;left:50%;transform:translateX(-50%)}.s2{bottom:8px;left:50%;transform:translateX(-50%)}.e2{right:12px;top:50%;transform:translateY(-50%)}.w2{left:12px;top:50%;transform:translateY(-50%)}
-.hard-target-arrow{position:absolute;left:50%;top:50%;width:4px;height:66px;background:#f97316;transform-origin:50% 100%;border-radius:4px}
-.hard-target-arrow:before{content:"";position:absolute;top:-10px;left:-6px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid #f97316}
+.hard-nav{text-align:center;padding:20px 10px}
+.compass-rose{position:relative;width:180px;height:180px;border:3px solid #64748b;border-radius:50%;background:#0b1220;margin:0 auto 12px;overflow:visible}
+.compass-dial{position:absolute;inset:0;border-radius:50%;transition:transform .18s linear;transform-origin:center center}
+.compass-dial .dir{position:absolute;font-weight:900}
+.compass-dial .n2{top:8px;left:50%;transform:translateX(-50%)}
+.compass-dial .s2{bottom:8px;left:50%;transform:translateX(-50%)}
+.compass-dial .e2{right:12px;top:50%;transform:translateY(-50%)}
+.compass-dial .w2{left:12px;top:50%;transform:translateY(-50%)}
+.hard-forward-marker{position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid #22c55e;z-index:4}
+.hard-target-arrow{position:absolute;left:50%;top:50%;width:5px;height:62px;background:#f97316;transform-origin:50% 100%;transform:translate(-50%,-100%) rotate(0deg);border-radius:4px;z-index:5;transition:transform .18s linear}
+.hard-target-arrow:before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:15px solid #f97316}
+.hard-centre-dot{position:absolute;left:50%;top:50%;width:13px;height:13px;border-radius:50%;background:#fff;border:3px solid #f97316;transform:translate(-50%,-50%);z-index:6}
 .hard-label{font-size:1.25rem;font-weight:900}
 .segmented{display:flex;gap:6px}.seg{min-height:38px;padding:8px 10px;font-size:.84rem}.seg.active{background:#334155}.map-note{font-size:.8rem;color:#94a3b8;margin:8px 0 0}
 .modal{position:fixed;inset:0;z-index:9999;background:#020617}.modal #fullMap{width:100%;height:100%}
@@ -61,11 +69,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.2</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.3</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.3</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -129,8 +137,12 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="hardNavPanel" class="hard-nav hidden">
   <div class="compass-rose">
-    <span class="dir n2">N</span><span class="dir e2">E</span><span class="dir s2">S</span><span class="dir w2">W</span>
+    <div class="hard-forward-marker" title="You are facing this way"></div>
+    <div id="hardCompassDial" class="compass-dial">
+      <span class="dir n2">N</span><span class="dir e2">E</span><span class="dir s2">S</span><span class="dir w2">W</span>
+    </div>
     <div id="hardTargetArrow" class="hard-target-arrow"></div>
+    <div class="hard-centre-dot"></div>
   </div>
   <div id="hardCompassLabel" class="hard-label">—</div>
 </div>
@@ -369,7 +381,7 @@ function startGPS(){
  navigator.geolocation.watchPosition(p=>{
    S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
    $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;
-   updateSetup();updatePlayers();updateGame();applyTravelBearing();
+   updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
 function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateBoundaryArea();updateSetup();updateDiagnostics()}
@@ -510,10 +522,26 @@ function generate(){
  updatePlayers();updateGameUI();updateGame();updateDiagnostics();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
 function updateHardCompass(){
- if(S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length)return;
- let b=bear(S.currentPos,S.checkpoints[S.currentIndex]);
- $("hardTargetArrow").style.transform=`translateX(-50%) rotate(${b}deg)`;
- $("hardCompassLabel").textContent=`Head ${comp(b)}`;
+ const panel=$("hardNavPanel");
+ if(S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length){
+   if(panel&&S.navMode==="hard"&&S.currentIndex>=S.checkpoints.length)panel.classList.add("hidden");
+   return;
+ }
+ if(panel)panel.classList.remove("hidden");
+
+ const targetBearing=bear(S.currentPos,S.checkpoints[S.currentIndex]);
+ const heading=(S.hasReliableHeading&&S.smoothHeading!=null)?S.smoothHeading:0;
+
+ // Rotate the compass cardinals opposite the player's heading.
+ // The top of the display therefore represents the direction the player is facing.
+ $("hardCompassDial").style.transform=`rotate(${-heading}deg)`;
+
+ // Point to the checkpoint relative to the direction the player is facing.
+ // 0 = ahead, 90 = right, -90 = left, 180 = behind.
+ const relative=((targetBearing-heading+540)%360)-180;
+ $("hardTargetArrow").style.transform=`translate(-50%,-100%) rotate(${relative}deg)`;
+
+ $("hardCompassLabel").textContent=S.hasReliableHeading?`Head ${comp(targetBearing)}`:`Head ${comp(targetBearing)} • getting direction…`;
 }
 function updateGameUI(){
  let n=S.checkpoints.length;$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
@@ -543,7 +571,7 @@ function unlock(){
 function answer(choice,correct){
  if(choice===correct){S.score++;$("feedback").textContent="Correct! Next checkpoint unlocked."}else $("feedback").textContent=`Not quite. The answer was ${correct}.`;
  [...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);
- setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}updateGameUI();updateGame()},1200);
+ setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");$("hardNavPanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}updateGameUI();updateGame()},1200);
 }
 function refreshFullMapState(){
  if(!S.fullMap)return;
