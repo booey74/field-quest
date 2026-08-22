@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.3</title>
+<title>Field Quest v1.4</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -69,11 +69,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.3</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.4</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.3</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.4</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -549,6 +549,34 @@ function updateGameUI(){
  if(S.fullMap)syncMapState(S.fullMap,"full");
  updateHardCompass();hud();
 }
+
+function clearCompletedNavigation(){
+  if(S.gameTargetMarker){S.gameTargetMarker.remove();S.gameTargetMarker=null}
+  if(S.fullTargetMarker){S.fullTargetMarker.remove();S.fullTargetMarker=null}
+  if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}
+  if(S.fullTarget){S.fullTarget.remove();S.fullTarget=null}
+
+  for(const map of [S.gameMap,S.fullMap]){
+    if(!map)continue;
+    try{
+      const src=map.getSource("medium-grid");
+      if(src)src.setData({type:"FeatureCollection",features:[]});
+    }catch(e){}
+  }
+
+  const hard=$("hardNavPanel"); if(hard)hard.classList.add("hidden");
+
+  for(const id of ["navHint","mediumHint","searchHint","hardCompassLabel"]){
+    const el=$(id); if(el)el.textContent="";
+  }
+
+  const distance=$("distanceText"); if(distance)distance.textContent="🏁";
+  const bearing=$("bearingText"); if(bearing)bearing.textContent="";
+
+  updateMapData(S.gameMap);
+  updateMapData(S.fullMap);
+}
+
 function updateGame(){
  if(!S.currentPos||!S.checkpoints.length||S.currentIndex>=S.checkpoints.length)return;
  let t=S.checkpoints[S.currentIndex],d=dist(S.currentPos,t),r=+$("unlockRadius").value;
@@ -571,7 +599,12 @@ function unlock(){
 function answer(choice,correct){
  if(choice===correct){S.score++;$("feedback").textContent="Correct! Next checkpoint unlocked."}else $("feedback").textContent=`Not quite. The answer was ${correct}.`;
  [...$("answerOptions").querySelectorAll("button")].forEach(b=>b.disabled=true);
- setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){$("distanceText").textContent="🏁";$("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;$("challengePanel").classList.add("hidden");$("hardNavPanel").classList.add("hidden");if(S.gameTarget){S.gameTarget.remove();S.gameTarget=null}return}updateGameUI();updateGame()},1200);
+ setTimeout(()=>{S.currentIndex++;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;if(S.currentIndex>=S.checkpoints.length){
+  clearCompletedNavigation();
+  $("bearingText").textContent=`Game complete — score ${S.score}/${S.checkpoints.length}`;
+  $("challengePanel").classList.add("hidden");
+  return
+}updateGameUI();updateGame()},1200);
 }
 function refreshFullMapState(){
  if(!S.fullMap)return;

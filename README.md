@@ -1,26 +1,17 @@
-# Field Quest v1.3
+# Field Quest v1.4
 
-Hard-mode compass refinement built from stable v1.2.
+Completion-state consistency fix built from v1.3.
 
 ## Changes
-- Hard-mode orange checkpoint arrow now starts from the exact centre of the compass.
-- Compass cardinals rotate using the same smoothed heading source used by Travel Up.
-- A fixed green marker at the top represents the direction the player is currently facing.
-- The orange arrow points to the checkpoint relative to the player's current facing direction:
-  - Up = ahead
-  - Right = checkpoint to the right
-  - Left = checkpoint to the left
-  - Down = checkpoint behind
-- Existing text cue such as “Head SE” remains as backup guidance.
-- Hard-mode compass hides after the final checkpoint so the completed-game state is cleaner.
-- Easy and Medium modes are unchanged.
-- Service-worker cache updated to v1.3.
+- Shared completion clean-up for Easy, Medium and Hard.
+- Removes final checkpoint marker.
+- Clears Medium grid/search overlay and stale guidance.
+- Hides Hard compass at completion.
+- Keeps map, boundary and live player position visible.
+- Keeps final score and End game action visible.
+- Service-worker cache updated to v1.4.
 
-## Test focus
-- Confirm splash/main UI show v1.3.
-- In Hard mode, walk in several different directions and confirm N/E/S/W rotate relative to current heading.
-- Confirm orange arrow always originates in the compass centre.
-- Confirm turning toward the checkpoint makes the orange arrow move toward the top.
-- Confirm checkpoint distance and “Head …” text remain correct.
-- Complete the final checkpoint and confirm the compass disappears.
-- Regression-check Easy and Medium modes.
+## Acceptance focus
+- Complete Easy, Medium and Hard games and confirm each has the same clean end-state.
+- Confirm no target-specific graphics or guidance remain after completion.
+- Confirm map, boundary, player marker, final score and End game remain visible.
