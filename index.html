@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.1 v0.7</title>
+<title>Field Quest v1.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -17,7 +17,7 @@ h1,h2,h3,p{margin-top:0}h1{margin-bottom:0}.eyebrow{margin-bottom:4px;color:var(
 .card{background:#111827f5;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}.small{color:var(--muted)}
 button,input,select{font:inherit}button{border:0;border-radius:12px;min-height:48px;padding:12px 14px;background:#1f2937;color:white;font-weight:750}
 button:disabled{opacity:.45}.primary{background:var(--accent);color:#052e16}.ghost{border:1px solid var(--line);background:transparent}.wide{width:100%;margin-top:12px}
-.button-row,.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stats{margin:14px 0}.stats div{background:#0b1220;padding:12px;border-radius:12px}
+.button-row,.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.boundary-stats{grid-template-columns:repeat(3,1fr)}.stats{margin:14px 0}.stats div{background:#0b1220;padding:12px;border-radius:12px}
 .stats span{display:block;color:var(--muted);font-size:.82rem}.stats strong{font-size:1.2rem}
 label{display:grid;gap:8px;margin:14px 0;color:var(--muted);font-weight:650}
 input[type=number],select{width:100%;border:1px solid var(--line);background:#0b1220;color:white;padding:12px;border-radius:12px}
@@ -52,20 +52,20 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .hud{position:absolute;z-index:10000;left:12px;right:12px;background:#0f172ae8;border:1px solid #94a3b840;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .top-hud{top:max(12px,env(safe-area-inset-top))}.bottom-hud{bottom:max(12px,env(safe-area-inset-bottom))}
 .hud-label{display:block;color:#94a3b8;font-size:.7rem;font-weight:800;letter-spacing:.1em}.hud-hint{text-align:right;color:#fdba74;font-weight:750}
-.full-controls{position:absolute;z-index:10000;right:12px;bottom:96px;display:flex;gap:8px;flex-direction:column}
+.full-controls{position:absolute;z-index:10000;right:12px;bottom:104px;display:flex;gap:8px;flex-direction:column}.modal .maplibregl-ctrl-bottom-left{bottom:104px;left:4px}
 .maplibregl-ctrl-attrib{font-size:10px}
-@media(max-width:480px){.category-grid{grid-template-columns:1fr}#setupMap{height:245px}#gameMap{height:290px}.compass-rose{width:160px;height:160px}.control-bar{align-items:stretch}.control-group{width:100%}.control-group button{flex:1}}
+@media(max-width:480px){.boundary-stats{grid-template-columns:1fr 1fr}.boundary-stats div:last-child{grid-column:1/-1}.category-grid{grid-template-columns:1fr}#setupMap{height:245px}#gameMap{height:290px}.compass-rose{width:160px;height:160px}.control-bar{align-items:stretch}.control-group{width:100%}.control-group button{flex:1}}
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -76,7 +76,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <div class="control-bar"><div></div><button id="recenterSetupBtn" class="ghost">Re-centre</button></div>
 </div>
 <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
-<div class="stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
+<div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
 </section>
 
@@ -150,21 +150,6 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </div>
 
 
-<section class="card" id="diagCard">
-<h2>v1.1 diagnostics</h2>
-<p class="small">Temporary test information for the map-state issue.</p>
-<div class="stats">
-  <div><span>Boundary</span><strong id="diagBoundary">0 points</strong></div>
-  <div><span>Checkpoint</span><strong id="diagCheckpoint">none</strong></div>
-  <div><span>Game marker</span><strong id="diagGameMarker">off</strong></div>
-  <div><span>Boundary layer</span><strong id="diagBoundaryLayer">off</strong></div>
-</div>
-<div class="stats">
-  <div><span>Full marker</span><strong id="diagFullMarker">off</strong></div>
-  <div><span>Full boundary</span><strong id="diagFullBoundary">off</strong></div>
-</div>
-</section>
-
 <section class="card small"><h2>Safety</h2><p>Use only in a safe open area away from roads, water, steep drops and other hazards. GPS can drift by several metres.</p></section>
 </main>
 
@@ -173,7 +158,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true
 };
 
 const Q=[
@@ -250,6 +235,27 @@ function targetEl(n){
  return el;
 }
 function boundaryEl(n){let el=document.createElement("div");el.className="boundary-pin";el.textContent=n;return el}
+
+function polygonAreaM2(poly){
+ if(!poly||poly.length<3)return 0;
+ const R=6371008.8;
+ const lat0=poly.reduce((sum,p)=>sum+p.lat,0)/poly.length*Math.PI/180;
+ const pts=poly.map(p=>({
+   x:R*(p.lon*Math.PI/180)*Math.cos(lat0),
+   y:R*(p.lat*Math.PI/180)
+ }));
+ let a=0;
+ for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+   a+=pts[j].x*pts[i].y-pts[i].x*pts[j].y;
+ }
+ return Math.abs(a)/2;
+}
+function updateBoundaryArea(){
+ const el=$("boundaryArea");if(!el)return;
+ const a=polygonAreaM2(S.boundary);
+ el.textContent=a>0?`${Math.round(a).toLocaleString()} m²`:"—";
+}
+
 function polygonGeo(poly){if(poly.length<3)return{type:"FeatureCollection",features:[]};let c=poly.map(p=>[p.lon,p.lat]);c.push(c[0]);return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]}}
 function lineGeo(poly){if(poly.length<2)return{type:"FeatureCollection",features:[]};return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"LineString",coordinates:poly.map(p=>[p.lon,p.lat])}}]}}
 function gridBounds(t){let b=box(S.boundary),w=(b.maxLon-b.minLon)/3,h=(b.maxLat-b.minLat)/3,c=Math.max(0,Math.min(2,Math.floor((t.lon-b.minLon)/w))),r=Math.max(0,Math.min(2,Math.floor((t.lat-b.minLat)/h))),west=b.minLon+c*w,south=b.minLat+r*h;return{west,east:west+w,south,north:south+h}}
@@ -281,16 +287,53 @@ function fitBoundary(map){
  if(!map||!S.boundary.length)return;let b=box(S.boundary);
  map.fitBounds([[b.minLon,b.minLat],[b.maxLon,b.maxLat]],{padding:45,maxZoom:18,duration:450,bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0});
 }
+
+function followKeyForMap(map){
+ if(map===S.setupMap)return"followSetup";
+ if(map===S.gameMap)return"followGame";
+ if(map===S.fullMap)return"followFull";
+ return null;
+}
+function enableFollow(map){
+ const k=followKeyForMap(map);if(k)S[k]=true;
+ recenterMap(map);
+}
+function bindFollowBehaviour(map){
+ if(!map||map.__fieldQuestFollowBound)return;
+ map.__fieldQuestFollowBound=true;
+ map.on("dragstart",()=>{
+   const k=followKeyForMap(map);if(k)S[k]=false;
+ });
+}
+function followCurrentPosition(map){
+ if(!map||!S.currentPos)return;
+ const k=followKeyForMap(map);
+ if(k&&S[k]===false)return;
+ const opts={center:[S.currentPos.lon,S.currentPos.lat],duration:180};
+ if(map===S.gameMap||map===S.fullMap){
+   opts.bearing=S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0;
+ }
+ map.easeTo(opts);
+}
+
 function recenterMap(map){
  if(!map||!S.currentPos)return;
- map.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:Math.max(map.getZoom(),17),bearing:S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0,duration:450});
+ const k=followKeyForMap(map);if(k)S[k]=true;
+ map.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:Math.max(map.getZoom(),17),bearing:(map===S.gameMap||map===S.fullMap)&&S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0,duration:350});
 }
 function circularSmooth(oldVal,newVal,alpha=.22){if(oldVal==null)return newVal;let diff=((newVal-oldVal+540)%360)-180;return(oldVal+alpha*diff+360)%360}
 function updateHeading(p){
  let candidate=null,reliable=false;
  if(typeof p.coords.heading==="number"&&!Number.isNaN(p.coords.heading)&&p.coords.heading>=0&&(p.coords.speed==null||p.coords.speed>0.5)){candidate=p.coords.heading;reliable=true}
- else if(S.prevPos&&S.currentPos&&dist(S.prevPos,S.currentPos)>3){candidate=bear(S.prevPos,S.currentPos);reliable=true}
- if(reliable){S.smoothHeading=circularSmooth(S.smoothHeading,candidate,.25);S.hasReliableHeading=true}
+ else if(S.prevPos&&S.currentPos&&dist(S.prevPos,S.currentPos)>2){candidate=bear(S.prevPos,S.currentPos);reliable=true}
+ if(reliable){
+   let alpha=.42;
+   if(S.smoothHeading!=null){
+     const turn=Math.abs(((candidate-S.smoothHeading+540)%360)-180);
+     if(turn>60)alpha=.58;
+   }
+   S.smoothHeading=circularSmooth(S.smoothHeading,candidate,alpha);S.hasReliableHeading=true
+ }
 }
 function updateCompassRoses(){
  let setupBearing=S.setupMap?S.setupMap.getBearing():0,gameBearing=S.gameMap?S.gameMap.getBearing():0,fullBearing=S.fullMap?S.fullMap.getBearing():0;
@@ -300,14 +343,14 @@ function updateCompassRoses(){
 }
 function applyTravelBearing(){
  let b=S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0;
- ["gameMap","fullMap"].forEach(k=>{let m=S[k];if(m&&Math.abs((((m.getBearing()-b)+540)%360)-180)>2)m.easeTo({bearing:b,duration:350})});
+ ["gameMap","fullMap"].forEach(k=>{let m=S[k];if(m&&Math.abs((((m.getBearing()-b)+540)%360)-180)>1)m.easeTo({bearing:b,duration:220})});
  $("travelNote").classList.toggle("hidden",!(S.mapMode==="travel"&&!S.hasReliableHeading));
  updateCompassRoses();
 }
 function ensureSetupMap(){
  if(S.setupMap)return;
  S.setupMap=newMap("setupMap",[-3.38,51.75]);
- S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
+ bindFollowBehaviour(S.setupMap);S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
  S.setupMap.on("rotate",updateCompassRoses);
 }
 function updateSetup(){
@@ -318,7 +361,7 @@ setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="
  S.boundaryMarkers.forEach(m=>m.remove());S.boundaryMarkers=[];
  S.boundary.forEach((p,i)=>S.boundaryMarkers.push(new maplibregl.Marker({element:boundaryEl(i+1)}).setLngLat([p.lon,p.lat]).addTo(S.setupMap)));
  if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
- if(!S.boundary.length)S.setupMap.easeTo({center:[S.currentPos.lon,S.currentPos.lat],zoom:17,duration:300});
+ followCurrentPosition(S.setupMap);updateBoundaryArea();
 }
 function startGPS(){
  if(!navigator.geolocation){alert("GPS is not supported on this device.");return}
@@ -329,8 +372,8 @@ function startGPS(){
    updateSetup();updatePlayers();updateGame();applyTravelBearing();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
-function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateSetup();updateDiagnostics()}
-function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup();updateDiagnostics()}
+function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateBoundaryArea();updateSetup();updateDiagnostics()}
+function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";updateBoundaryArea();$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup();updateDiagnostics()}
 
 function ensureGameSources(map){
  if(!map || !map.isStyleLoaded()) return false;
@@ -353,16 +396,7 @@ function ensureGameSources(map){
 }
 
 
-function updateDiagnostics(){
- const b=S.boundary||[];
- const t=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
- $("diagBoundary").textContent=b.length+" points";
- $("diagCheckpoint").textContent=t?`${t.lat.toFixed(5)}, ${t.lon.toFixed(5)}`:"none";
- $("diagGameMarker").textContent=S.gameTargetMarker?"active":"off";
- $("diagFullMarker").textContent=S.fullTargetMarker?"active":"off";
- $("diagBoundaryLayer").textContent=(S.gameMap&&S.gameMap.getSource&&S.gameMap.getSource("boundary"))?"active":"off";
- $("diagFullBoundary").textContent=(S.fullMap&&S.fullMap.getSource&&S.fullMap.getSource("boundary"))?"active":"off";
-}
+function updateDiagnostics(){}
 
 function ensurePermanentTargetMarker(map,prefix){
  const key=prefix==="game"?"gameTargetMarker":"fullTargetMarker";
@@ -442,7 +476,7 @@ function bindMapState(map,prefix){
 function createGameMap(container){
  let prefix=container==="gameMap"?"game":"full";
  let map=newMap(container,[S.currentPos.lon,S.currentPos.lat]);
- bindMapState(map,prefix);
+ bindMapState(map,prefix);bindFollowBehaviour(map);
  map.on("load",()=>{
    syncMapState(map,prefix);
    fitBoundary(map);
@@ -461,6 +495,7 @@ function updatePlayers(){
    let map=S[mapKey];if(!map)continue;
    if(!S[markerKey])S[markerKey]=new maplibregl.Marker({element:personEl(),anchor:"bottom"}).setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(map);
    else S[markerKey].setLngLat([S.currentPos.lon,S.currentPos.lat]);
+   followCurrentPosition(map);
  }
 }
 function generate(){
@@ -542,7 +577,7 @@ function openFull(){
      if(S.fullMap){
        S.fullMap.resize();
        syncMapState(S.fullMap,"full");
-       recenterMap(S.fullMap);
+       enableFollow(S.fullMap);
      }
      hud();
      updateCompassRoses();
@@ -559,12 +594,12 @@ function setMapMode(m){
 $("startGpsBtn").onclick=startGPS;
 $("markPointBtn").onclick=markBoundary;
 $("clearBoundaryBtn").onclick=clearBoundary;
-$("recenterSetupBtn").onclick=()=>recenterMap(S.setupMap);
+$("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;
-$("recenterGameBtn").onclick=()=>recenterMap(S.gameMap);
-$("recenterFullBtn").onclick=()=>recenterMap(S.fullMap);
+$("recenterGameBtn").onclick=()=>enableFollow(S.gameMap);
+$("recenterFullBtn").onclick=()=>enableFollow(S.fullMap);
 $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
