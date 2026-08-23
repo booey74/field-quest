@@ -1,24 +1,28 @@
-# Field Quest v1.5
+# Field Quest v1.6
 
-Shared completed-game state built from v1.4.
+Manual boundary drawing release, built from the v1.5 stable baseline.
 
-## What changed
-All navigation modes now use one explicit completed-game state.
+## New boundary setup
+Players can now choose:
+- Walk boundary — the existing GPS walk-and-mark workflow.
+- Draw boundary — tap the setup map to place numbered boundary points.
 
-When the final checkpoint is completed:
-- Remove the active checkpoint/target marker.
-- Clear Medium-mode target/search overlays.
-- Hide the Hard-mode compass.
-- Clear and hide `zoneText` / target-area guidance.
-- Replace `NEXT CHECKPOINT` with `GAME COMPLETE`.
-- Replace the checkpoint label with `Finished`.
-- Remove live distance/bearing guidance and show only the completion message.
-- Set the progress bar to 100%.
-- Clear the full-screen HUD's live checkpoint/distance guidance.
-- Keep the map, boundary and live player position visible.
-- Keep the finish flag, final score and End game action visible.
+## Draw mode
+- Tap the map to add points.
+- A live polygon and approximate area update as points are added.
+- Drag any numbered point to refine the shape before confirming.
+- Undo removes the most recently added point.
+- Clear boundary resets the whole shape.
+- At least three points are required.
+- Confirm boundary locks the drawn area and enables game generation.
+- Re-entering Draw boundary unlocks it for editing and requires reconfirmation.
 
-Starting a new game explicitly restores the normal live-game header and navigation state.
+## Existing behaviour protected
+- Walk boundary remains available.
+- Easy, Medium and Hard gameplay are unchanged.
+- v1.5 shared completed-game state remains in place.
+- Map/player/navigation behaviour remains unchanged outside boundary setup.
+- Service-worker cache updated to v1.6.
 
 ## Test focus
-Complete Easy, Medium and Hard games and confirm all three reach the same clean end state, then run the standard regression suite.
+Test both boundary creation methods, editing/undo/confirm behaviour, area calculation, and then run the standard Field Quest regression suite.

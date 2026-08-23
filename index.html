@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.5</title>
+<title>Field Quest v1.6</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -63,27 +63,48 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .full-controls{position:absolute;z-index:10000;right:12px;bottom:104px;display:flex;gap:8px;flex-direction:column}.modal .maplibregl-ctrl-bottom-left{bottom:104px;left:4px}
 .maplibregl-ctrl-attrib{font-size:10px}
 @media(max-width:480px){.boundary-stats{grid-template-columns:1fr 1fr}.boundary-stats div:last-child{grid-column:1/-1}.category-grid{grid-template-columns:1fr}#setupMap{height:245px}#gameMap{height:290px}.compass-rose{width:160px;height:160px}.control-bar{align-items:stretch}.control-group{width:100%}.control-group button{flex:1}}
+
+.boundary-mode-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.boundary-mode-row button.active{background:#334155;border-color:#64748b}
+.boundary-help{margin:8px 0 12px;color:#94a3b8;font-size:.95rem}
+.draw-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.draw-actions .wide-action{grid-column:1/-1}
+.boundary-confirmed{color:#22c55e;font-weight:800}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.5</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.6</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.5</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.6</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
-<p>Walk around the edge and mark points. Numbered markers appear immediately.</p>
+<div class="boundary-mode-row">
+  <button id="walkBoundaryBtn" class="ghost active">Walk boundary</button>
+  <button id="drawBoundaryBtn" class="ghost">Draw boundary</button>
+</div>
+<p id="boundaryHelp" class="boundary-help">Walk around the edge and mark points. Numbered markers appear immediately.</p>
 <div class="map-wrap">
   <div id="setupMap"></div>
   <div class="compass-mini"><div class="heading-marker"></div><div id="setupCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
   <div class="control-bar"><div></div><button id="recenterSetupBtn" class="ghost">Re-centre</button></div>
 </div>
-<div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
+<div id="walkBoundaryControls">
+  <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
+</div>
+<div id="drawBoundaryControls" class="hidden">
+  <div class="draw-actions">
+    <button id="undoBoundaryBtn" class="ghost" disabled>Undo last point</button>
+    <button id="confirmBoundaryBtn" class="primary" disabled>Confirm boundary</button>
+  </div>
+  <p id="drawBoundaryStatus" class="boundary-help">Tap the map to add points. Drag a numbered point to adjust it before confirming.</p>
+</div>
 <div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
 </section>
@@ -170,7 +191,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false
 };
 
 const Q=[
@@ -359,21 +380,112 @@ function applyTravelBearing(){
  $("travelNote").classList.toggle("hidden",!(S.mapMode==="travel"&&!S.hasReliableHeading));
  updateCompassRoses();
 }
+
+function boundaryReady(){
+ return S.boundary.length>=3 && (S.boundaryMode==="walk" || S.boundaryConfirmed);
+}
+function refreshBoundaryControls(){
+ $("boundaryCount").textContent=S.boundary.length;
+ $("clearBoundaryBtn").disabled=S.boundary.length===0;
+ $("undoBoundaryBtn").disabled=S.boundary.length===0 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
+ $("confirmBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
+ $("generateBtn").disabled=!boundaryReady();
+
+ $("walkBoundaryBtn").classList.toggle("active",S.boundaryMode==="walk");
+ $("drawBoundaryBtn").classList.toggle("active",S.boundaryMode==="draw");
+ $("walkBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="walk");
+ $("drawBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="draw");
+
+ if(S.boundaryMode==="walk"){
+   $("boundaryHelp").textContent="Walk around the edge and mark points. Numbered markers appear immediately.";
+ }else if(S.boundaryConfirmed){
+   $("boundaryHelp").textContent="Drawn boundary confirmed. Choose Draw boundary again to edit or switch to Walk boundary to replace it.";
+   $("drawBoundaryStatus").textContent="Boundary confirmed and ready for game generation.";
+   $("drawBoundaryStatus").classList.add("boundary-confirmed");
+ }else{
+   $("boundaryHelp").textContent="Tap the map to place boundary points. Drag numbered points to refine the shape, then confirm it.";
+   $("drawBoundaryStatus").textContent=S.boundary.length<3
+     ? "Add at least 3 points to create a playable area."
+     : "Area preview is live. Drag points if needed, then confirm the boundary.";
+   $("drawBoundaryStatus").classList.remove("boundary-confirmed");
+ }
+ updateBoundaryArea();
+}
+function setBoundaryMode(mode){
+ S.boundaryMode=mode;
+ if(mode==="draw"){
+   // Entering Draw mode allows editing of any existing boundary.
+   S.boundaryConfirmed=false;
+ }
+ refreshBoundaryControls();
+ updateSetup();
+}
+function addDrawBoundaryPoint(lngLat){
+ if(S.boundaryMode!=="draw" || S.boundaryConfirmed)return;
+ S.boundary.push({lat:lngLat.lat,lon:lngLat.lng});
+ refreshBoundaryControls();
+ updateSetup();
+ updateDiagnostics();
+}
+function undoBoundaryPoint(){
+ if(S.boundaryMode!=="draw" || S.boundaryConfirmed || !S.boundary.length)return;
+ S.boundary.pop();
+ refreshBoundaryControls();
+ updateSetup();
+ updateDiagnostics();
+}
+function confirmDrawBoundary(){
+ if(S.boundaryMode!=="draw" || S.boundary.length<3)return;
+ S.boundaryConfirmed=true;
+ refreshBoundaryControls();
+ updateSetup();
+ fitBoundary(S.setupMap);
+ updateDiagnostics();
+}
+
 function ensureSetupMap(){
  if(S.setupMap)return;
  S.setupMap=newMap("setupMap",[-3.38,51.75]);
  bindFollowBehaviour(S.setupMap);S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
  S.setupMap.on("rotate",updateCompassRoses);
+ S.setupMap.on("click",e=>addDrawBoundaryPoint(e.lngLat));
 }
 function updateSetup(){
  ensureSetupMap();
-setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);if(!S.currentPos)return;
- if(!S.setupPlayer)S.setupPlayer=new maplibregl.Marker({element:personEl(),anchor:"bottom"}).setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(S.setupMap);
- else S.setupPlayer.setLngLat([S.currentPos.lon,S.currentPos.lat]);
+ setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
+
+ if(S.currentPos){
+   if(!S.setupPlayer)S.setupPlayer=new maplibregl.Marker({element:personEl(),anchor:"bottom"}).setLngLat([S.currentPos.lon,S.currentPos.lat]).addTo(S.setupMap);
+   else S.setupPlayer.setLngLat([S.currentPos.lon,S.currentPos.lat]);
+ }
+
  S.boundaryMarkers.forEach(m=>m.remove());S.boundaryMarkers=[];
- S.boundary.forEach((p,i)=>S.boundaryMarkers.push(new maplibregl.Marker({element:boundaryEl(i+1)}).setLngLat([p.lon,p.lat]).addTo(S.setupMap)));
+ S.boundary.forEach((p,i)=>{
+   const draggable=S.boundaryMode==="draw"&&!S.boundaryConfirmed;
+   const m=new maplibregl.Marker({element:boundaryEl(i+1),draggable}).setLngLat([p.lon,p.lat]).addTo(S.setupMap);
+   if(draggable){
+     m.on("dragstart",()=>{S.followSetup=false});
+     m.on("drag",()=>{
+       const ll=m.getLngLat();
+       S.boundary[i]={lat:ll.lat,lon:ll.lng};
+       if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
+       updateBoundaryArea();
+     });
+     m.on("dragend",()=>{
+       const ll=m.getLngLat();
+       S.boundary[i]={lat:ll.lat,lon:ll.lng};
+       S.boundaryConfirmed=false;
+       refreshBoundaryControls();
+       updateMapData(S.setupMap);
+       updateDiagnostics();
+     });
+   }
+   S.boundaryMarkers.push(m);
+ });
+
  if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
- followCurrentPosition(S.setupMap);updateBoundaryArea();
+ if(S.currentPos && S.boundaryMode==="walk")followCurrentPosition(S.setupMap);
+ refreshBoundaryControls();
 }
 function startGPS(){
  if(!navigator.geolocation){alert("GPS is not supported on this device.");return}
@@ -384,8 +496,16 @@ function startGPS(){
    updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
-function markBoundary(){if(!S.currentPos)return;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});$("boundaryCount").textContent=S.boundary.length;$("clearBoundaryBtn").disabled=false;$("generateBtn").disabled=S.boundary.length<3;updateBoundaryArea();updateSetup();updateDiagnostics()}
-function clearBoundary(){S.boundary=[];$("boundaryCount").textContent="0";updateBoundaryArea();$("clearBoundaryBtn").disabled=true;$("generateBtn").disabled=true;updateSetup();updateDiagnostics()}
+function markBoundary(){
+ if(!S.currentPos || S.boundaryMode!=="walk")return;
+ S.boundaryConfirmed=false;
+ S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});
+ refreshBoundaryControls();updateSetup();updateDiagnostics();
+}
+function clearBoundary(){
+ S.boundary=[];S.boundaryConfirmed=false;
+ refreshBoundaryControls();updateSetup();updateDiagnostics();
+}
 
 function ensureGameSources(map){
  if(!map || !map.isStyleLoaded()) return false;
@@ -675,6 +795,10 @@ function setMapMode(m){
 $("startGpsBtn").onclick=startGPS;
 $("markPointBtn").onclick=markBoundary;
 $("clearBoundaryBtn").onclick=clearBoundary;
+$("walkBoundaryBtn").onclick=()=>setBoundaryMode("walk");
+$("drawBoundaryBtn").onclick=()=>setBoundaryMode("draw");
+$("undoBoundaryBtn").onclick=undoBoundaryPoint;
+$("confirmBoundaryBtn").onclick=confirmDrawBoundary;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
@@ -685,7 +809,7 @@ $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
 
-ensureSetupMap();
+ensureSetupMap();refreshBoundaryControls();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
