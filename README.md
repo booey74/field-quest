@@ -1,28 +1,29 @@
-# Field Quest v1.6
+# Field Quest v1.7
 
-Manual boundary drawing release, built from the v1.5 stable baseline.
+Saved boundary areas release, built from the v1.6 stable baseline.
 
-## New boundary setup
-Players can now choose:
-- Walk boundary — the existing GPS walk-and-mark workflow.
-- Draw boundary — tap the setup map to place numbered boundary points.
+## New saved-area capability
+- Save any valid current boundary, whether created by walking or drawing.
+- Give each saved area a name.
+- Saved areas persist locally on the current device/browser using localStorage.
+- Browse saved areas from the setup screen.
+- Show saved boundary point count and approximate area.
+- Load a saved boundary directly into setup.
+- Rename saved areas.
+- Delete saved areas without deleting the currently loaded map boundary.
+- Loading a saved area makes it immediately ready for game generation.
+- Choose Draw Boundary after loading if you want to edit it; reconfirm before use.
 
-## Draw mode
-- Tap the map to add points.
-- A live polygon and approximate area update as points are added.
-- Drag any numbered point to refine the shape before confirming.
-- Undo removes the most recently added point.
-- Clear boundary resets the whole shape.
-- At least three points are required.
-- Confirm boundary locks the drawn area and enables game generation.
-- Re-entering Draw boundary unlocks it for editing and requires reconfirmation.
+## Deliberate scope
+- Local device storage only.
+- No accounts, cloud sync or sharing in this release.
+- Exclusion zones remain a separate future platform feature.
 
 ## Existing behaviour protected
-- Walk boundary remains available.
+- Walk Boundary and Draw Boundary remain available.
 - Easy, Medium and Hard gameplay are unchanged.
-- v1.5 shared completed-game state remains in place.
-- Map/player/navigation behaviour remains unchanged outside boundary setup.
-- Service-worker cache updated to v1.6.
+- Shared completed-game state remains unchanged.
+- Service-worker cache updated to v1.7.
 
 ## Test focus
-Test both boundary creation methods, editing/undo/confirm behaviour, area calculation, and then run the standard Field Quest regression suite.
+Save, reload, rename, delete and edit saved boundaries, confirm persistence after page reload, then run the normal Field Quest regression suite.

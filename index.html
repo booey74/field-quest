@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.6</title>
+<title>Field Quest v1.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -71,17 +71,25 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .draw-actions .wide-action{grid-column:1/-1}
 .boundary-confirmed{color:#22c55e;font-weight:800}
 
+
+.saved-areas{margin-top:16px;padding-top:16px;border-top:1px solid #334155}
+.saved-areas h3{margin:0 0 8px;font-size:1.05rem}
+.saved-areas p{margin:0 0 10px;color:#94a3b8;font-size:.92rem}
+.saved-area-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.saved-area-actions .wide-action{grid-column:1/-1}
+.saved-area-meta{margin-top:8px;color:#94a3b8;font-size:.88rem;min-height:1.2em}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.6</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.7</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.6</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.7</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -107,6 +115,23 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </div>
 <div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
+
+<div class="saved-areas">
+  <h3>Saved areas</h3>
+  <p>Save a play area on this device so you can reuse it without defining the boundary again.</p>
+  <button id="saveBoundaryBtn" class="ghost wide" disabled>Save current area</button>
+  <label>Saved area
+    <select id="savedBoundarySelect">
+      <option value="">No saved areas yet</option>
+    </select>
+  </label>
+  <div id="savedBoundaryMeta" class="saved-area-meta"></div>
+  <div class="saved-area-actions">
+    <button id="loadBoundaryBtn" class="primary" disabled>Load area</button>
+    <button id="renameBoundaryBtn" class="ghost" disabled>Rename</button>
+    <button id="deleteBoundaryBtn" class="ghost wide-action" disabled>Delete saved area</button>
+  </div>
+</div>
 </section>
 
 <section class="card">
@@ -191,7 +216,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null
 };
 
 const Q=[
@@ -381,6 +406,132 @@ function applyTravelBearing(){
  updateCompassRoses();
 }
 
+
+const SAVED_BOUNDARY_KEY="fieldQuestSavedBoundariesV1";
+
+function cloneBoundary(poly){
+ return (poly||[]).map(p=>({lat:Number(p.lat),lon:Number(p.lon)}));
+}
+function loadSavedBoundariesFromStorage(){
+ try{
+   const raw=localStorage.getItem(SAVED_BOUNDARY_KEY);
+   const parsed=raw?JSON.parse(raw):[];
+   S.savedBoundaries=Array.isArray(parsed)?parsed.filter(x=>x&&x.id&&x.name&&Array.isArray(x.boundary)&&x.boundary.length>=3):[];
+ }catch(e){
+   S.savedBoundaries=[];
+ }
+ renderSavedBoundaryList();
+}
+function persistSavedBoundaries(){
+ try{
+   localStorage.setItem(SAVED_BOUNDARY_KEY,JSON.stringify(S.savedBoundaries));
+   return true;
+ }catch(e){
+   alert("This device could not save the area. Browser storage may be unavailable or full.");
+   return false;
+ }
+}
+function savedBoundaryById(id){
+ return S.savedBoundaries.find(x=>x.id===id)||null;
+}
+function renderSavedBoundaryList(preferredId=null){
+ const select=$("savedBoundarySelect");
+ if(!select)return;
+ const current=preferredId||select.value||S.loadedSavedBoundaryId||"";
+ select.innerHTML="";
+ if(!S.savedBoundaries.length){
+   const o=document.createElement("option");o.value="";o.textContent="No saved areas yet";select.appendChild(o);
+ }else{
+   const blank=document.createElement("option");blank.value="";blank.textContent="Choose a saved area";select.appendChild(blank);
+   [...S.savedBoundaries].sort((a,b)=>a.name.localeCompare(b.name)).forEach(item=>{
+     const o=document.createElement("option");
+     o.value=item.id;
+     o.textContent=item.name;
+     select.appendChild(o);
+   });
+ }
+ if(current && savedBoundaryById(current))select.value=current;
+ updateSavedBoundarySelection();
+}
+function updateSavedBoundarySelection(){
+ const id=$("savedBoundarySelect").value;
+ const item=savedBoundaryById(id);
+ $("loadBoundaryBtn").disabled=!item;
+ $("renameBoundaryBtn").disabled=!item;
+ $("deleteBoundaryBtn").disabled=!item;
+ if(item){
+   const area=Math.round(item.area||polygonAreaM2(item.boundary));
+   $("savedBoundaryMeta").textContent=`${item.boundary.length} points • ${area.toLocaleString()} m²`;
+ }else{
+   $("savedBoundaryMeta").textContent="";
+ }
+}
+function promptBoundaryName(initial=""){
+ const name=prompt("Name this saved area:",initial);
+ if(name===null)return null;
+ const clean=name.trim();
+ if(!clean){alert("Please enter a name for the saved area.");return null}
+ return clean.slice(0,80);
+}
+function saveCurrentBoundary(){
+ if(!boundaryReady())return;
+ const name=promptBoundaryName("");
+ if(!name)return;
+ const duplicate=S.savedBoundaries.find(x=>x.name.toLowerCase()===name.toLowerCase());
+ if(duplicate && !confirm(`A saved area called "${duplicate.name}" already exists. Replace it?`))return;
+
+ const item={
+   id:duplicate?duplicate.id:`area-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+   name,
+   boundary:cloneBoundary(S.boundary),
+   area:polygonAreaM2(S.boundary),
+   updatedAt:new Date().toISOString()
+ };
+ if(duplicate){
+   const i=S.savedBoundaries.findIndex(x=>x.id===duplicate.id);
+   S.savedBoundaries[i]=item;
+ }else{
+   S.savedBoundaries.push(item);
+ }
+ if(!persistSavedBoundaries())return;
+ S.loadedSavedBoundaryId=item.id;
+ renderSavedBoundaryList(item.id);
+}
+function loadSelectedBoundary(){
+ const item=savedBoundaryById($("savedBoundarySelect").value);
+ if(!item)return;
+ S.boundary=cloneBoundary(item.boundary);
+ S.loadedSavedBoundaryId=item.id;
+ S.boundaryMode="draw";
+ S.boundaryConfirmed=true;
+ S.followSetup=false;
+ refreshBoundaryControls();
+ updateSetup();
+ fitBoundary(S.setupMap);
+ updateDiagnostics();
+}
+function renameSelectedBoundary(){
+ const item=savedBoundaryById($("savedBoundarySelect").value);
+ if(!item)return;
+ const name=promptBoundaryName(item.name);
+ if(!name)return;
+ const clash=S.savedBoundaries.find(x=>x.id!==item.id&&x.name.toLowerCase()===name.toLowerCase());
+ if(clash){alert("Another saved area already uses that name.");return}
+ item.name=name;
+ item.updatedAt=new Date().toISOString();
+ if(!persistSavedBoundaries())return;
+ renderSavedBoundaryList(item.id);
+}
+function deleteSelectedBoundary(){
+ const item=savedBoundaryById($("savedBoundarySelect").value);
+ if(!item)return;
+ if(!confirm(`Delete saved area "${item.name}"? The current boundary on the map will not be removed.`))return;
+ S.savedBoundaries=S.savedBoundaries.filter(x=>x.id!==item.id);
+ if(S.loadedSavedBoundaryId===item.id)S.loadedSavedBoundaryId=null;
+ if(!persistSavedBoundaries())return;
+ renderSavedBoundaryList();
+}
+
 function boundaryReady(){
  return S.boundary.length>=3 && (S.boundaryMode==="walk" || S.boundaryConfirmed);
 }
@@ -390,6 +541,7 @@ function refreshBoundaryControls(){
  $("undoBoundaryBtn").disabled=S.boundary.length===0 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
  $("confirmBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
  $("generateBtn").disabled=!boundaryReady();
+ $("saveBoundaryBtn").disabled=!boundaryReady();
 
  $("walkBoundaryBtn").classList.toggle("active",S.boundaryMode==="walk");
  $("drawBoundaryBtn").classList.toggle("active",S.boundaryMode==="draw");
@@ -422,14 +574,14 @@ function setBoundaryMode(mode){
 }
 function addDrawBoundaryPoint(lngLat){
  if(S.boundaryMode!=="draw" || S.boundaryConfirmed)return;
- S.boundary.push({lat:lngLat.lat,lon:lngLat.lng});
+ S.loadedSavedBoundaryId=null;S.boundary.push({lat:lngLat.lat,lon:lngLat.lng});
  refreshBoundaryControls();
  updateSetup();
  updateDiagnostics();
 }
 function undoBoundaryPoint(){
  if(S.boundaryMode!=="draw" || S.boundaryConfirmed || !S.boundary.length)return;
- S.boundary.pop();
+ S.loadedSavedBoundaryId=null;S.boundary.pop();
  refreshBoundaryControls();
  updateSetup();
  updateDiagnostics();
@@ -467,13 +619,13 @@ function updateSetup(){
      m.on("dragstart",()=>{S.followSetup=false});
      m.on("drag",()=>{
        const ll=m.getLngLat();
-       S.boundary[i]={lat:ll.lat,lon:ll.lng};
+       S.boundary[i]={lat:ll.lat,lon:ll.lng};S.loadedSavedBoundaryId=null;
        if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
        updateBoundaryArea();
      });
      m.on("dragend",()=>{
        const ll=m.getLngLat();
-       S.boundary[i]={lat:ll.lat,lon:ll.lng};
+       S.boundary[i]={lat:ll.lat,lon:ll.lng};S.loadedSavedBoundaryId=null;
        S.boundaryConfirmed=false;
        refreshBoundaryControls();
        updateMapData(S.setupMap);
@@ -499,11 +651,11 @@ function startGPS(){
 function markBoundary(){
  if(!S.currentPos || S.boundaryMode!=="walk")return;
  S.boundaryConfirmed=false;
- S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});
+ S.loadedSavedBoundaryId=null;S.boundary.push({lat:S.currentPos.lat,lon:S.currentPos.lon});
  refreshBoundaryControls();updateSetup();updateDiagnostics();
 }
 function clearBoundary(){
- S.boundary=[];S.boundaryConfirmed=false;
+ S.boundary=[];S.boundaryConfirmed=false;S.loadedSavedBoundaryId=null;
  refreshBoundaryControls();updateSetup();updateDiagnostics();
 }
 
@@ -799,6 +951,11 @@ $("walkBoundaryBtn").onclick=()=>setBoundaryMode("walk");
 $("drawBoundaryBtn").onclick=()=>setBoundaryMode("draw");
 $("undoBoundaryBtn").onclick=undoBoundaryPoint;
 $("confirmBoundaryBtn").onclick=confirmDrawBoundary;
+$("saveBoundaryBtn").onclick=saveCurrentBoundary;
+$("savedBoundarySelect").onchange=updateSavedBoundarySelection;
+$("loadBoundaryBtn").onclick=loadSelectedBoundary;
+$("renameBoundaryBtn").onclick=renameSelectedBoundary;
+$("deleteBoundaryBtn").onclick=deleteSelectedBoundary;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
@@ -809,7 +966,7 @@ $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
 
-ensureSetupMap();refreshBoundaryControls();
+ensureSetupMap();loadSavedBoundariesFromStorage();refreshBoundaryControls();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
