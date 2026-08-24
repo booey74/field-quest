@@ -90,6 +90,16 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .setup-map-expanded .control-bar{z-index:10000;flex:0 0 auto}
 .setup-map-expanded #expandSetupBtn{font-weight:800}
 
+
+.expanded-boundary-actions{display:none}
+.setup-map-expanded .expanded-boundary-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.setup-map-expanded .expanded-boundary-actions button{min-width:120px}
+.setup-map-expanded .control-bar{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+@media(max-width:480px){
+ .setup-map-expanded .expanded-boundary-actions{width:100%}
+ .setup-map-expanded .expanded-boundary-actions button{flex:1;min-width:0}
+}
+
 </style>
 </head>
 <body>
@@ -113,7 +123,16 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <div id="setupMap"></div>
   <div class="compass-mini"><div class="heading-marker"></div><div id="setupCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
   <div class="control-bar">
-  <div></div>
+  <div class="expanded-boundary-actions">
+    <div id="expandedWalkActions">
+      <button id="expandedStartGpsBtn" class="primary">Start GPS</button>
+      <button id="expandedMarkPointBtn" disabled>Mark boundary point</button>
+    </div>
+    <div id="expandedDrawActions" class="hidden">
+      <button id="expandedUndoBoundaryBtn" class="ghost" disabled>Undo last point</button>
+      <button id="expandedConfirmBoundaryBtn" class="primary" disabled>Confirm boundary</button>
+    </div>
+  </div>
   <div class="control-group">
     <button id="recenterSetupBtn" class="ghost">Re-centre</button>
     <button id="expandSetupBtn" class="ghost">Expand map</button>
@@ -565,6 +584,11 @@ function refreshBoundaryControls(){
  $("drawBoundaryBtn").textContent=S.boundary.length>0?"Edit boundary":"Draw boundary";
  $("walkBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="walk");
  $("drawBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="draw");
+ $("expandedWalkActions").classList.toggle("hidden",S.boundaryMode!=="walk");
+ $("expandedDrawActions").classList.toggle("hidden",S.boundaryMode!=="draw");
+ $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
+ $("expandedUndoBoundaryBtn").disabled=$("undoBoundaryBtn").disabled;
+ $("expandedConfirmBoundaryBtn").disabled=$("confirmBoundaryBtn").disabled;
 
  if(S.boundaryMode==="walk"){
    $("boundaryHelp").textContent="Walk around the edge and mark points. Numbered markers appear immediately.";
@@ -677,7 +701,7 @@ function startGPS(){
  $("gpsBadge").textContent="GPS starting…";
  navigator.geolocation.watchPosition(p=>{
    S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
-   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;
+   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;
    updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
@@ -991,6 +1015,10 @@ $("renameBoundaryBtn").onclick=renameSelectedBoundary;
 $("deleteBoundaryBtn").onclick=deleteSelectedBoundary;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
+$("expandedStartGpsBtn").onclick=startGPS;
+$("expandedMarkPointBtn").onclick=markBoundary;
+$("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
+$("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;
