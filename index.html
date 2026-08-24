@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.7</title>
+<title>Field Quest v1.8</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -79,17 +79,28 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .saved-area-actions .wide-action{grid-column:1/-1}
 .saved-area-meta{margin-top:8px;color:#94a3b8;font-size:.88rem;min-height:1.2em}
 
+
+.setup-map-expanded{
+ position:fixed!important;inset:0!important;z-index:9998!important;
+ margin:0!important;border-radius:0!important;border:0!important;
+ background:#0b1220!important;display:flex!important;flex-direction:column!important;
+}
+.setup-map-expanded #setupMap{height:auto!important;flex:1 1 auto!important;min-height:0!important}
+.setup-map-expanded .compass-mini{z-index:10000}
+.setup-map-expanded .control-bar{z-index:10000;flex:0 0 auto}
+.setup-map-expanded #expandSetupBtn{font-weight:800}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.7</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.7</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -98,10 +109,16 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <button id="drawBoundaryBtn" class="ghost">Draw boundary</button>
 </div>
 <p id="boundaryHelp" class="boundary-help">Walk around the edge and mark points. Numbered markers appear immediately.</p>
-<div class="map-wrap">
+<div id="setupMapWrap" class="map-wrap">
   <div id="setupMap"></div>
   <div class="compass-mini"><div class="heading-marker"></div><div id="setupCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
-  <div class="control-bar"><div></div><button id="recenterSetupBtn" class="ghost">Re-centre</button></div>
+  <div class="control-bar">
+  <div></div>
+  <div class="control-group">
+    <button id="recenterSetupBtn" class="ghost">Re-centre</button>
+    <button id="expandSetupBtn" class="ghost">Expand map</button>
+  </div>
+</div>
 </div>
 <div id="walkBoundaryControls">
   <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
@@ -545,13 +562,14 @@ function refreshBoundaryControls(){
 
  $("walkBoundaryBtn").classList.toggle("active",S.boundaryMode==="walk");
  $("drawBoundaryBtn").classList.toggle("active",S.boundaryMode==="draw");
+ $("drawBoundaryBtn").textContent=S.boundary.length>0?"Edit boundary":"Draw boundary";
  $("walkBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="walk");
  $("drawBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="draw");
 
  if(S.boundaryMode==="walk"){
    $("boundaryHelp").textContent="Walk around the edge and mark points. Numbered markers appear immediately.";
  }else if(S.boundaryConfirmed){
-   $("boundaryHelp").textContent="Drawn boundary confirmed. Choose Draw boundary again to edit or switch to Walk boundary to replace it.";
+   $("boundaryHelp").textContent="Boundary confirmed. Choose Edit boundary to adjust it or switch to Walk boundary to replace it.";
    $("drawBoundaryStatus").textContent="Boundary confirmed and ready for game generation.";
    $("drawBoundaryStatus").classList.add("boundary-confirmed");
  }else{
@@ -593,6 +611,21 @@ function confirmDrawBoundary(){
  updateSetup();
  fitBoundary(S.setupMap);
  updateDiagnostics();
+}
+
+
+function toggleSetupMapExpanded(force){
+ const wrap=$("setupMapWrap");
+ const btn=$("expandSetupBtn");
+ if(!wrap||!S.setupMap)return;
+ const shouldExpand=typeof force==="boolean"?force:!wrap.classList.contains("setup-map-expanded");
+ wrap.classList.toggle("setup-map-expanded",shouldExpand);
+ btn.textContent=shouldExpand?"Minimise":"Expand map";
+ setTimeout(()=>{
+   S.setupMap.resize();
+   if(S.boundary.length>=2)fitBoundary(S.setupMap);
+   else if(S.currentPos)recenterMap(S.setupMap);
+ },80);
 }
 
 function ensureSetupMap(){
@@ -957,6 +990,7 @@ $("loadBoundaryBtn").onclick=loadSelectedBoundary;
 $("renameBoundaryBtn").onclick=renameSelectedBoundary;
 $("deleteBoundaryBtn").onclick=deleteSelectedBoundary;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
+$("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;
