@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.9.1</title>
+<title>Field Quest v1.9.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -150,11 +150,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -396,6 +396,34 @@ function randomPoint(poly){let b=box(poly);for(let i=0;i<8000;i++){let p={lat:b.
 function segDist(p,a,b){const r=rad((a.lat+b.lat+p.lat)/3),mx=111320*Math.cos(r),my=110540,px=p.lon*mx,py=p.lat*my,ax=a.lon*mx,ay=a.lat*my,bx=b.lon*mx,by=b.lat*my,dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;let t=den?((px-ax)*dx+(py-ay)*dy)/den:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))}
 function edgeDist(p,poly){let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,segDist(p,poly[i],poly[(i+1)%poly.length]));return best}
 function exclusionEdgeDist(p){let best=Infinity;for(const z of (S.exclusionZones||[])){if(!z.points||z.points.length<3)continue;best=Math.min(best,edgeDist(p,z.points))}return best}
+
+function firstCheckpointMinDistance(){
+ if(!S.currentPos||S.boundary.length<3)return 0;
+ const d=diag(S.boundary);
+ return Math.max(12,Math.min(35,d*0.12));
+}
+function pickFirstCheckpointFarEnough(points){
+ if(!S.currentPos||!points.length)return points;
+ const minD=firstCheckpointMinDistance();
+ if(minD<=0)return points;
+
+ let idx=points.findIndex(p=>dist(p,S.currentPos)>=minD);
+ if(idx>0){const p=points.splice(idx,1)[0];points.unshift(p);return points}
+ if(idx===0)return points;
+
+ const relax=[0.8,0.65,0.5,0.35,0];
+ for(const f of relax){
+   const threshold=minD*f;
+   let best=-1,bestD=-1;
+   points.forEach((p,i)=>{
+     const d=dist(p,S.currentPos);
+     if(d>=threshold&&d>bestD){best=i;bestD=d}
+   });
+   if(best>=0){const p=points.splice(best,1)[0];points.unshift(p);return points}
+ }
+ return points;
+}
+
 function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035)),exBuffer=5;for(let round=0;round<8;round++){let out=[];for(let i=0;i<10000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(exclusionEdgeDist(p)<exBuffer)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9;exBuffer*=.9}let out=[];let guard=0;while(out.length<count&&guard++<10000){let p=randomPoint(poly);if(exclusionEdgeDist(p)>=2)out.push(p)}if(out.length<count)throw Error("Not enough safe playable space for that many checkpoints.");return shuffle(out)}
 function pool(age,cs){let exact=Q.filter(q=>q.age===age&&cs.includes(q.c));if(exact.length)return shuffle(exact);return shuffle(Q.filter(q=>Math.abs(q.age-age)===1&&cs.includes(q.c)))}
 function richerStyle(){
@@ -555,6 +583,12 @@ function updateCompassRoses(){
  $("gameCompassRose").style.transform=`rotate(${-gameBearing}deg)`;
  $("fullCompassRose").style.transform=`rotate(${-fullBearing}deg)`;
 }
+function refreshTravelUpAvailability(){
+ const disabled=!S.gpsReady;
+ if($("travelUpBtn"))$("travelUpBtn").disabled=disabled;
+ if($("fullTravelUpBtn"))$("fullTravelUpBtn").disabled=disabled;
+}
+
 function applyTravelBearing(){
  let b=S.mapMode==="travel"&&S.hasReliableHeading?S.smoothHeading:0;
  ["gameMap","fullMap"].forEach(k=>{let m=S[k];if(m&&Math.abs((((m.getBearing()-b)+540)%360)-180)>1)m.easeTo({bearing:b,duration:220})});
@@ -740,7 +774,7 @@ function refreshExclusionControls(){
  }else{
    $("exclusionStatus").textContent=S.exclusionZones.length?`${S.exclusionZones.length} exclusion zone${S.exclusionZones.length===1?"":"s"} active.`:"";
  }
- $("generateBtn").disabled=!boundaryReady()||!exclusionsValid();
+ $("generateBtn").disabled=!boundaryReady()||!exclusionsValid()||!S.gpsReady;
  $("saveBoundaryBtn").disabled=!boundaryReady()||!exclusionsValid();
 }
 function startExclusionDrawing(editId=null){
@@ -842,6 +876,9 @@ function refreshBoundaryControls(){
    $("drawBoundaryStatus").classList.remove("boundary-confirmed");
  }
  updateBoundaryArea();
+ if(boundaryReady()&&!S.gpsReady){
+   $("boundaryHelp").textContent+=" Start GPS and wait for a position fix before generating the game.";
+ }
  refreshExclusionControls();
 }
 function confirmWalkBoundary(){
@@ -954,7 +991,7 @@ function startGPS(){
  $("gpsBadge").textContent="GPS starting…";
  navigator.geolocation.watchPosition(p=>{
    S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
-   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
+   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;S.gpsReady=true;refreshTravelUpAvailability();$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
    updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
@@ -1115,11 +1152,19 @@ function updatePlayers(){
  }
 }
 function generate(){
+ if(!S.gpsReady||!S.currentPos){
+   alert("GPS is required before starting a game. Tap Start GPS and wait for your position to be found.");
+   $("gpsBadge").textContent="GPS required";
+   return;
+ }
  let count=Math.max(1,Math.min(20,+$("checkpointCount").value||6)),age=+$("playerAge").value||9,cs=cats();
  if(!cs.length)return alert("Choose at least one category.");
  let p=pool(age,cs);if(!p.length)return alert("No suitable questions yet.");
  count=Math.min(count,p.length);
- try{S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));}
+ try{
+   const pts=pickFirstCheckpointFarEnough(spread(S.boundary,count));
+   S.checkpoints=pts.map((x,i)=>({...x,challenge:p[i]}));
+ }
  catch(e){alert(e.message||"Could not place checkpoints safely. Try fewer checkpoints or smaller exclusion zones.");return}
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
  $("checkpointEyebrow").textContent="NEXT CHECKPOINT";
@@ -1164,7 +1209,7 @@ function updateHardCompass(){
 
  $("hardCompassLabel").textContent=S.hasReliableHeading?`Head ${comp(targetBearing)}`:`Head ${comp(targetBearing)} • getting direction…`;
 }
-function updateGameUI(){
+function updateGameUI(){refreshTravelUpAvailability();
  let n=S.checkpoints.length;$("checkpointEyebrow").textContent="NEXT CHECKPOINT";$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("zoneText").textContent="";$("zoneText").classList.add("hidden");$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
  if(S.gameMap)syncMapState(S.gameMap,"game");
  if(S.fullMap)syncMapState(S.fullMap,"full");
