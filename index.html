@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.8</title>
+<title>Field Quest v1.8.1</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -106,11 +106,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8.1</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -127,6 +127,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
     <div id="expandedWalkActions">
       <button id="expandedStartGpsBtn" class="primary">Start GPS</button>
       <button id="expandedMarkPointBtn" disabled>Mark boundary point</button>
+      <button id="expandedConfirmWalkBoundaryBtn" class="primary" disabled>Confirm boundary</button>
     </div>
     <div id="expandedDrawActions" class="hidden">
       <button id="expandedUndoBoundaryBtn" class="ghost" disabled>Undo last point</button>
@@ -141,6 +142,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </div>
 <div id="walkBoundaryControls">
   <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
+  <button id="confirmWalkBoundaryBtn" class="primary wide" disabled>Confirm boundary</button>
 </div>
 <div id="drawBoundaryControls" class="hidden">
   <div class="draw-actions">
@@ -569,13 +571,14 @@ function deleteSelectedBoundary(){
 }
 
 function boundaryReady(){
- return S.boundary.length>=3 && (S.boundaryMode==="walk" || S.boundaryConfirmed);
+ return S.boundary.length>=3 && S.boundaryConfirmed;
 }
 function refreshBoundaryControls(){
  $("boundaryCount").textContent=S.boundary.length;
  $("clearBoundaryBtn").disabled=S.boundary.length===0;
  $("undoBoundaryBtn").disabled=S.boundary.length===0 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
  $("confirmBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
+ $("confirmWalkBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="walk" || S.boundaryConfirmed;
  $("generateBtn").disabled=!boundaryReady();
  $("saveBoundaryBtn").disabled=!boundaryReady();
 
@@ -587,11 +590,14 @@ function refreshBoundaryControls(){
  $("expandedWalkActions").classList.toggle("hidden",S.boundaryMode!=="walk");
  $("expandedDrawActions").classList.toggle("hidden",S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
+ $("expandedConfirmWalkBoundaryBtn").disabled=$("confirmWalkBoundaryBtn").disabled;
  $("expandedUndoBoundaryBtn").disabled=$("undoBoundaryBtn").disabled;
  $("expandedConfirmBoundaryBtn").disabled=$("confirmBoundaryBtn").disabled;
 
  if(S.boundaryMode==="walk"){
-   $("boundaryHelp").textContent="Walk around the edge and mark points. Numbered markers appear immediately.";
+   $("boundaryHelp").textContent=S.boundaryConfirmed
+     ?"Boundary confirmed. Choose Edit boundary to adjust it or clear it to start again."
+     :"Walk around the edge and mark points. Add at least 3 points, then confirm the boundary.";
  }else if(S.boundaryConfirmed){
    $("boundaryHelp").textContent="Boundary confirmed. Choose Edit boundary to adjust it or switch to Walk boundary to replace it.";
    $("drawBoundaryStatus").textContent="Boundary confirmed and ready for game generation.";
@@ -605,10 +611,23 @@ function refreshBoundaryControls(){
  }
  updateBoundaryArea();
 }
+function confirmWalkBoundary(){
+ if(S.boundaryMode!=="walk" || S.boundary.length<3)return;
+ S.boundaryConfirmed=true;
+ refreshBoundaryControls();
+ updateSetup();
+ fitBoundary(S.setupMap);
+ updateDiagnostics();
+}
+
 function setBoundaryMode(mode){
+ const changed=S.boundaryMode!==mode;
  S.boundaryMode=mode;
  if(mode==="draw"){
-   // Entering Draw mode allows editing of any existing boundary.
+   // Entering Draw/Edit mode allows editing of any existing boundary.
+   S.boundaryConfirmed=false;
+ }else if(mode==="walk" && changed && S.boundary.length){
+   // Switching to Walk means the current shape can be changed and must be reconfirmed.
    S.boundaryConfirmed=false;
  }
  refreshBoundaryControls();
@@ -1003,6 +1022,7 @@ function setMapMode(m){
 
 $("startGpsBtn").onclick=startGPS;
 $("markPointBtn").onclick=markBoundary;
+$("confirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("clearBoundaryBtn").onclick=clearBoundary;
 $("walkBoundaryBtn").onclick=()=>setBoundaryMode("walk");
 $("drawBoundaryBtn").onclick=()=>setBoundaryMode("draw");
@@ -1017,6 +1037,7 @@ $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("expandedStartGpsBtn").onclick=startGPS;
 $("expandedMarkPointBtn").onclick=markBoundary;
+$("expandedConfirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
 $("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;
 $("generateBtn").onclick=generate;
