@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.8.2</title>
+<title>Field Quest v1.9</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -123,17 +123,27 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   }
 }
 
+
+.exclusion-panel{margin-top:16px;padding-top:16px;border-top:1px solid #334155}
+.exclusion-panel h3{margin:0 0 8px;font-size:1.05rem}
+.exclusion-panel p{margin:0 0 10px;color:#94a3b8;font-size:.92rem}
+.exclusion-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.exclusion-actions .wide-action{grid-column:1/-1}
+.exclusion-status{margin-top:8px;color:#fca5a5;font-size:.9rem;min-height:1.2em}
+.exclusion-pin{width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid white;color:white;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px #0006}
+.exclusion-drawing{outline:2px solid #ef4444;outline-offset:2px}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8.2</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -176,6 +186,27 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </div>
 <div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
+
+<div class="exclusion-panel">
+  <h3>Exclusion zones</h3>
+  <p>Mark areas inside the boundary that the game must never use, such as water, roads or other hazards.</p>
+  <div class="exclusion-actions">
+    <button id="addExclusionBtn" class="ghost" disabled>Add exclusion zone</button>
+    <button id="finishExclusionBtn" class="primary" disabled>Confirm zone</button>
+    <button id="undoExclusionBtn" class="ghost" disabled>Undo point</button>
+    <button id="cancelExclusionBtn" class="ghost" disabled>Cancel drawing</button>
+  </div>
+  <label>Existing zones
+    <select id="exclusionSelect">
+      <option value="">No exclusion zones</option>
+    </select>
+  </label>
+  <div id="exclusionStatus" class="exclusion-status"></div>
+  <div class="exclusion-actions">
+    <button id="editExclusionBtn" class="ghost" disabled>Edit selected</button>
+    <button id="deleteExclusionBtn" class="ghost" disabled>Delete selected</button>
+  </div>
+</div>
 
 <div class="saved-areas">
   <h3>Saved areas</h3>
@@ -277,7 +308,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null
+ navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[]
 };
 
 const Q=[
@@ -322,12 +353,34 @@ function dist(a,b){const R=6371000,dla=rad(b.lat-a.lat),dlo=rad(b.lon-a.lon),l1=
 function bear(a,b){let l1=rad(a.lat),l2=rad(b.lat),dl=rad(b.lon-a.lon),y=Math.sin(dl)*Math.cos(l2),x=Math.cos(l1)*Math.sin(l2)-Math.sin(l1)*Math.cos(l2)*Math.cos(dl);return(deg(Math.atan2(y,x))+360)%360}
 function comp(d){return["N","NE","E","SE","S","SW","W","NW"][Math.round(d/45)%8]}
 function inside(p,poly){let x=p.lon,y=p.lat,c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if(((a.lat>y)!=(b.lat>y))&&(x<(b.lon-a.lon)*(y-a.lat)/((b.lat-a.lat)||1e-12)+a.lon))c=!c}return c}
+
+function pointInAnyExclusion(p){
+ return (S.exclusionZones||[]).some(z=>z&&Array.isArray(z.points)&&z.points.length>=3&&inside(p,z.points));
+}
+function exclusionInsideBoundary(poly){
+ if(!poly||poly.length<3||S.boundary.length<3)return false;
+ for(const p of poly) if(!inside(p,S.boundary)) return false;
+ for(let i=0;i<poly.length;i++){
+   const a=poly[i],b=poly[(i+1)%poly.length];
+   for(let k=1;k<10;k++){
+     const t=k/10;
+     const p={lat:a.lat+(b.lat-a.lat)*t,lon:a.lon+(b.lon-a.lon)*t};
+     if(!inside(p,S.boundary))return false;
+   }
+ }
+ return true;
+}
+function exclusionsValid(){
+ return (S.exclusionZones||[]).every(z=>exclusionInsideBoundary(z.points));
+}
+
 function box(poly){let la=poly.map(p=>p.lat),lo=poly.map(p=>p.lon);return{minLat:Math.min(...la),maxLat:Math.max(...la),minLon:Math.min(...lo),maxLon:Math.max(...lo)}}
 function diag(poly){let b=box(poly);return dist({lat:b.minLat,lon:b.minLon},{lat:b.maxLat,lon:b.maxLon})}
-function randomPoint(poly){let b=box(poly);for(let i=0;i<5000;i++){let p={lat:b.minLat+Math.random()*(b.maxLat-b.minLat),lon:b.minLon+Math.random()*(b.maxLon-b.minLon)};if(inside(p,poly))return p}throw Error("point")}
+function randomPoint(poly){let b=box(poly);for(let i=0;i<8000;i++){let p={lat:b.minLat+Math.random()*(b.maxLat-b.minLat),lon:b.minLon+Math.random()*(b.maxLon-b.minLon)};if(inside(p,poly)&&!pointInAnyExclusion(p))return p}throw Error("No valid point outside exclusion zones")}
 function segDist(p,a,b){const r=rad((a.lat+b.lat+p.lat)/3),mx=111320*Math.cos(r),my=110540,px=p.lon*mx,py=p.lat*my,ax=a.lon*mx,ay=a.lat*my,bx=b.lon*mx,by=b.lat*my,dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;let t=den?((px-ax)*dx+(py-ay)*dy)/den:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))}
 function edgeDist(p,poly){let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,segDist(p,poly[i],poly[(i+1)%poly.length]));return best}
-function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035));for(let round=0;round<8;round++){let out=[];for(let i=0;i<8000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9}let out=[];while(out.length<count)out.push(randomPoint(poly));return shuffle(out)}
+function exclusionEdgeDist(p){let best=Infinity;for(const z of (S.exclusionZones||[])){if(!z.points||z.points.length<3)continue;best=Math.min(best,edgeDist(p,z.points))}return best}
+function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035)),exBuffer=5;for(let round=0;round<8;round++){let out=[];for(let i=0;i<10000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(exclusionEdgeDist(p)<exBuffer)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9;exBuffer*=.9}let out=[];let guard=0;while(out.length<count&&guard++<10000){let p=randomPoint(poly);if(exclusionEdgeDist(p)>=2)out.push(p)}if(out.length<count)throw Error("Not enough safe playable space for that many checkpoints.");return shuffle(out)}
 function pool(age,cs){let exact=Q.filter(q=>q.age===age&&cs.includes(q.c));if(exact.length)return shuffle(exact);return shuffle(Q.filter(q=>Math.abs(q.age-age)===1&&cs.includes(q.c)))}
 function richerStyle(){
  return {
@@ -378,6 +431,21 @@ function updateBoundaryArea(){
 function polygonGeo(poly){if(poly.length<3)return{type:"FeatureCollection",features:[]};let c=poly.map(p=>[p.lon,p.lat]);c.push(c[0]);return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]}}
 function lineGeo(poly){if(poly.length<2)return{type:"FeatureCollection",features:[]};return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"LineString",coordinates:poly.map(p=>[p.lon,p.lat])}}]}}
 function gridBounds(t){let b=box(S.boundary),w=(b.maxLon-b.minLon)/3,h=(b.maxLat-b.minLat)/3,c=Math.max(0,Math.min(2,Math.floor((t.lon-b.minLon)/w))),r=Math.max(0,Math.min(2,Math.floor((t.lat-b.minLat)/h))),west=b.minLon+c*w,south=b.minLat+r*h;return{west,east:west+w,south,north:south+h}}
+
+function exclusionsGeo(){
+ const features=(S.exclusionZones||[]).filter(z=>z.points&&z.points.length>=3).map(z=>{
+   const c=z.points.map(p=>[p.lon,p.lat]);c.push(c[0]);
+   return{type:"Feature",properties:{id:z.id},geometry:{type:"Polygon",coordinates:[c]}};
+ });
+ return{type:"FeatureCollection",features};
+}
+function exclusionDraftGeo(){
+ if(!S.exclusionDrawing||S.exclusionDraft.length<2)return{type:"FeatureCollection",features:[]};
+ if(S.exclusionDraft.length===2)return lineGeo(S.exclusionDraft);
+ const c=S.exclusionDraft.map(p=>[p.lon,p.lat]);c.push(c[0]);
+ return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]};
+}
+
 function gridGeo(t){let g=gridBounds(t),c=[[g.west,g.south],[g.east,g.south],[g.east,g.north],[g.west,g.north],[g.west,g.south]];return{type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"Polygon",coordinates:[c]}}]}}
 function ensureAreaLayers(map){
  if(!map.getSource("boundary")){
@@ -394,11 +462,22 @@ function ensureAreaLayers(map){
    map.addLayer({id:"grid-fill",type:"fill",source:"grid",paint:{"fill-color":"#f97316","fill-opacity":0.20}});
    map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
  }
+ if(!map.getSource("exclusions")){
+   map.addSource("exclusions",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"exclusion-fill",type:"fill",source:"exclusions",paint:{"fill-color":"#ef4444","fill-opacity":0.24}});
+   map.addLayer({id:"exclusion-line",type:"line",source:"exclusions",paint:{"line-color":"#dc2626","line-width":3,"line-dasharray":[2,1]}});
+ }
+ if(!map.getSource("exclusion-draft")){
+   map.addSource("exclusion-draft",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"exclusion-draft-line",type:"line",source:"exclusion-draft",paint:{"line-color":"#ef4444","line-width":3}});
+ }
 }
 function updateMapData(map){
  if(!map||!map.isStyleLoaded())return;ensureAreaLayers(map);
  map.getSource("boundary").setData(polygonGeo(S.boundary));
  map.getSource("boundary-line-src").setData(S.boundary.length===2?lineGeo(S.boundary):{type:"FeatureCollection",features:[]});
+ map.getSource("exclusions").setData(exclusionsGeo());
+ map.getSource("exclusion-draft").setData(exclusionDraftGeo());
  let t=S.checkpoints[S.currentIndex];
  map.getSource("grid").setData(S.navMode==="medium"&&t?gridGeo(t):{type:"FeatureCollection",features:[]});
 }
@@ -545,6 +624,7 @@ function saveCurrentBoundary(){
    id:duplicate?duplicate.id:`area-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
    name,
    boundary:cloneBoundary(S.boundary),
+   exclusionZones:cloneExclusionZones(S.exclusionZones),
    area:polygonAreaM2(S.boundary),
    updatedAt:new Date().toISOString()
  };
@@ -562,10 +642,12 @@ function loadSelectedBoundary(){
  const item=savedBoundaryById($("savedBoundarySelect").value);
  if(!item)return;
  S.boundary=cloneBoundary(item.boundary);
+ S.exclusionZones=cloneExclusionZones(item.exclusionZones||[]);
  S.loadedSavedBoundaryId=item.id;
  S.boundaryMode="draw";
  S.boundaryConfirmed=true;
  S.followSetup=false;
+ renderExclusionList();
  refreshBoundaryControls();
  updateSetup();
  fitBoundary(S.setupMap);
@@ -591,6 +673,103 @@ function deleteSelectedBoundary(){
  if(S.loadedSavedBoundaryId===item.id)S.loadedSavedBoundaryId=null;
  if(!persistSavedBoundaries())return;
  renderSavedBoundaryList();
+}
+
+
+function cloneExclusionZones(zones){
+ return (zones||[]).map(z=>({id:String(z.id),name:String(z.name||"Exclusion zone"),points:cloneBoundary(z.points)}));
+}
+function exclusionById(id){return (S.exclusionZones||[]).find(z=>z.id===id)||null}
+function renderExclusionList(preferredId=null){
+ const select=$("exclusionSelect");if(!select)return;
+ const current=preferredId||select.value||"";
+ select.innerHTML="";
+ if(!S.exclusionZones.length){
+   const o=document.createElement("option");o.value="";o.textContent="No exclusion zones";select.appendChild(o);
+ }else{
+   const blank=document.createElement("option");blank.value="";blank.textContent="Choose a zone";select.appendChild(blank);
+   S.exclusionZones.forEach((z,i)=>{const o=document.createElement("option");o.value=z.id;o.textContent=z.name||`Exclusion zone ${i+1}`;select.appendChild(o)});
+ }
+ if(current&&exclusionById(current))select.value=current;
+ updateExclusionSelection();
+}
+function updateExclusionSelection(){
+ const z=exclusionById($("exclusionSelect").value);
+ $("editExclusionBtn").disabled=!z||S.exclusionDrawing;
+ $("deleteExclusionBtn").disabled=!z||S.exclusionDrawing;
+}
+function refreshExclusionControls(){
+ const canStart=boundaryReady()&&!S.exclusionDrawing;
+ $("addExclusionBtn").disabled=!canStart;
+ $("finishExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length<3;
+ $("undoExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length===0;
+ $("cancelExclusionBtn").disabled=!S.exclusionDrawing;
+ $("setupMapWrap").classList.toggle("exclusion-drawing",S.exclusionDrawing);
+ updateExclusionSelection();
+ if(!exclusionsValid()&&S.exclusionZones.length){
+   $("exclusionStatus").textContent="One or more exclusion zones no longer fit inside the current boundary. Edit or delete them before generating a game.";
+ }else if(S.exclusionDrawing){
+   $("exclusionStatus").textContent=S.exclusionDraft.length<3
+     ?"Tap inside the green boundary to add at least 3 exclusion-zone points."
+     :"Review the red area, then confirm the zone.";
+ }else{
+   $("exclusionStatus").textContent=S.exclusionZones.length?`${S.exclusionZones.length} exclusion zone${S.exclusionZones.length===1?"":"s"} active.`:"";
+ }
+ $("generateBtn").disabled=!boundaryReady()||!exclusionsValid();
+ $("saveBoundaryBtn").disabled=!boundaryReady()||!exclusionsValid();
+}
+function startExclusionDrawing(editId=null){
+ if(!boundaryReady())return alert("Confirm the main boundary first.");
+ S.exclusionDrawing=true;S.editingExclusionId=editId;
+ const existing=editId?exclusionById(editId):null;
+ S.exclusionDraft=existing?cloneBoundary(existing.points):[];
+ refreshExclusionControls();updateSetup();
+}
+function addExclusionPoint(lngLat){
+ if(!S.exclusionDrawing)return false;
+ const p={lat:lngLat.lat,lon:lngLat.lng};
+ if(!inside(p,S.boundary)){alert("Exclusion-zone points must stay inside the main boundary.");return true}
+ S.exclusionDraft.push(p);refreshExclusionControls();updateSetup();return true;
+}
+function undoExclusionPoint(){
+ if(!S.exclusionDrawing||!S.exclusionDraft.length)return;
+ S.exclusionDraft.pop();refreshExclusionControls();updateSetup();
+}
+function cancelExclusionDrawing(){
+ S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;refreshExclusionControls();updateSetup();
+}
+function confirmExclusionZone(){
+ if(!S.exclusionDrawing||S.exclusionDraft.length<3)return;
+ if(!exclusionInsideBoundary(S.exclusionDraft)){alert("The whole exclusion zone must stay inside the main boundary.");return}
+ if(S.editingExclusionId){
+   const z=exclusionById(S.editingExclusionId);if(z)z.points=cloneBoundary(S.exclusionDraft);
+ }else{
+   const number=S.exclusionZones.length+1;
+   S.exclusionZones.push({id:`zone-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:`Exclusion zone ${number}`,points:cloneBoundary(S.exclusionDraft)});
+ }
+ S.loadedSavedBoundaryId=null;
+ S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;
+ renderExclusionList();refreshExclusionControls();updateSetup();
+}
+function editSelectedExclusion(){
+ const id=$("exclusionSelect").value;if(id)startExclusionDrawing(id);
+}
+function deleteSelectedExclusion(){
+ const id=$("exclusionSelect").value,z=exclusionById(id);if(!z)return;
+ if(!confirm(`Delete "${z.name}"?`))return;
+ S.exclusionZones=S.exclusionZones.filter(x=>x.id!==id);S.loadedSavedBoundaryId=null;
+ renderExclusionList();refreshExclusionControls();updateSetup();
+}
+function exclusionEl(n){let el=document.createElement("div");el.className="exclusion-pin";el.textContent=n;return el}
+function renderExclusionDraftMarkers(){
+ (S.exclusionMarkers||[]).forEach(m=>m.remove());S.exclusionMarkers=[];
+ if(!S.setupMap||!S.exclusionDrawing)return;
+ S.exclusionDraft.forEach((p,i)=>{
+   const m=new maplibregl.Marker({element:exclusionEl(i+1),draggable:true}).setLngLat([p.lon,p.lat]).addTo(S.setupMap);
+   m.on("drag",()=>{const ll=m.getLngLat();const np={lat:ll.lat,lon:ll.lng};if(inside(np,S.boundary)){S.exclusionDraft[i]=np;if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap)}});
+   m.on("dragend",()=>{const ll=m.getLngLat();const np={lat:ll.lat,lon:ll.lng};if(!inside(np,S.boundary)){m.setLngLat([S.exclusionDraft[i].lon,S.exclusionDraft[i].lat]);alert("Exclusion-zone points must stay inside the main boundary.");}else S.exclusionDraft[i]=np;refreshExclusionControls();updateSetup()});
+   S.exclusionMarkers.push(m);
+ });
 }
 
 function boundaryReady(){
@@ -638,6 +817,7 @@ function refreshBoundaryControls(){
    $("drawBoundaryStatus").classList.remove("boundary-confirmed");
  }
  updateBoundaryArea();
+ refreshExclusionControls();
 }
 function confirmWalkBoundary(){
  if(S.boundaryMode!=="walk" || S.boundary.length<3)return;
@@ -704,7 +884,7 @@ function ensureSetupMap(){
  S.setupMap=newMap("setupMap",[-3.38,51.75]);
  bindFollowBehaviour(S.setupMap);S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
  S.setupMap.on("rotate",updateCompassRoses);
- S.setupMap.on("click",e=>addDrawBoundaryPoint(e.lngLat));
+ S.setupMap.on("click",e=>{if(addExclusionPoint(e.lngLat))return;addDrawBoundaryPoint(e.lngLat)});
 }
 function updateSetup(){
  ensureSetupMap();
@@ -740,7 +920,8 @@ function updateSetup(){
  });
 
  if(S.setupMap.isStyleLoaded())updateMapData(S.setupMap);
- if(S.currentPos && S.boundaryMode==="walk")followCurrentPosition(S.setupMap);
+ renderExclusionDraftMarkers();
+ if(S.currentPos && S.boundaryMode==="walk"&&!S.exclusionDrawing)followCurrentPosition(S.setupMap);
  refreshBoundaryControls();
 }
 function startGPS(){
@@ -760,7 +941,8 @@ function markBoundary(){
 }
 function clearBoundary(){
  S.boundary=[];S.boundaryConfirmed=false;S.loadedSavedBoundaryId=null;
- refreshBoundaryControls();updateSetup();updateDiagnostics();
+ S.exclusionZones=[];S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;
+ renderExclusionList();refreshBoundaryControls();updateSetup();updateDiagnostics();
 }
 
 function ensureGameSources(map){
@@ -779,6 +961,15 @@ function ensureGameSources(map){
    map.addSource("grid",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
    map.addLayer({id:"grid-fill",type:"fill",source:"grid",paint:{"fill-color":"#f97316","fill-opacity":0.20}});
    map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
+ }
+ if(!map.getSource("exclusions")){
+   map.addSource("exclusions",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"exclusion-fill",type:"fill",source:"exclusions",paint:{"fill-color":"#ef4444","fill-opacity":0.24}});
+   map.addLayer({id:"exclusion-line",type:"line",source:"exclusions",paint:{"line-color":"#dc2626","line-width":3,"line-dasharray":[2,1]}});
+ }
+ if(!map.getSource("exclusion-draft")){
+   map.addSource("exclusion-draft",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"exclusion-draft-line",type:"line",source:"exclusion-draft",paint:{"line-color":"#ef4444","line-width":3}});
  }
  return true;
 }
@@ -815,6 +1006,8 @@ function ensurePersistentBoundary(map){
  map.getSource("boundary-line-src").setData(
    S.boundary.length===2 ? lineGeo(S.boundary) : {type:"FeatureCollection",features:[]}
  );
+ if(map.getSource("exclusions"))map.getSource("exclusions").setData(exclusionsGeo());
+ if(map.getSource("exclusion-draft"))map.getSource("exclusion-draft").setData({type:"FeatureCollection",features:[]});
  const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
  map.getSource("grid").setData(
    S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
@@ -891,7 +1084,8 @@ function generate(){
  if(!cs.length)return alert("Choose at least one category.");
  let p=pool(age,cs);if(!p.length)return alert("No suitable questions yet.");
  count=Math.min(count,p.length);
- S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));
+ try{S.checkpoints=spread(S.boundary,count).map((x,i)=>({...x,challenge:p[i]}));}
+ catch(e){alert(e.message||"Could not place checkpoints safely. Try fewer checkpoints or smaller exclusion zones.");return}
  S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();
  $("checkpointEyebrow").textContent="NEXT CHECKPOINT";
  $("checkpointLabel").textContent="Checkpoint 1";
@@ -1061,6 +1255,13 @@ $("savedBoundarySelect").onchange=updateSavedBoundarySelection;
 $("loadBoundaryBtn").onclick=loadSelectedBoundary;
 $("renameBoundaryBtn").onclick=renameSelectedBoundary;
 $("deleteBoundaryBtn").onclick=deleteSelectedBoundary;
+$("addExclusionBtn").onclick=()=>startExclusionDrawing();
+$("finishExclusionBtn").onclick=confirmExclusionZone;
+$("undoExclusionBtn").onclick=undoExclusionPoint;
+$("cancelExclusionBtn").onclick=cancelExclusionDrawing;
+$("exclusionSelect").onchange=updateExclusionSelection;
+$("editExclusionBtn").onclick=editSelectedExclusion;
+$("deleteExclusionBtn").onclick=deleteSelectedExclusion;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("expandedStartGpsBtn").onclick=startGPS;
@@ -1077,7 +1278,7 @@ $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
 
-ensureSetupMap();loadSavedBoundariesFromStorage();refreshBoundaryControls();
+ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
