@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.9.2</title>
+<title>Field Quest v1.9.3</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -150,11 +150,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.2</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.3</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.3</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -1337,6 +1337,20 @@ function closeFull(){
    requestAnimationFrame(()=>refresh());
    setTimeout(()=>refresh(),120);
  }
+}
+
+
+function setMapMode(m){
+ S.mapMode=m;
+ $("northUpBtn").classList.toggle("active",m==="north");
+ $("travelUpBtn").classList.toggle("active",m==="travel");
+ if(m==="north"){
+   if(S.gameMap)S.gameMap.easeTo({bearing:0,duration:350});
+   if(S.fullMap)S.fullMap.easeTo({bearing:0,duration:350});
+ }else{
+   applyTravelBearing();
+ }
+ updateCompassRoses();
 }
 
 $("startGpsBtn").onclick=startGPS;
