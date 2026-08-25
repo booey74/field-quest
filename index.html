@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.8.1</title>
+<title>Field Quest v1.8.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -100,17 +100,40 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
  .setup-map-expanded .expanded-boundary-actions button{flex:1;min-width:0}
 }
 
+
+.setup-map-expanded #expandedWalkActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  width:100%;
+}
+.setup-map-expanded #expandedWalkActions #expandedConfirmWalkBoundaryBtn{
+  grid-column:1/-1;
+  width:100%;
+}
+.setup-map-expanded #expandedStartGpsBtn.gps-active{
+  opacity:.65;
+  background:#1e293b;
+  border-color:#475569;
+  color:#cbd5e1;
+}
+@media(max-width:480px){
+  .setup-map-expanded #expandedWalkActions{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.8.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.8.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -591,6 +614,11 @@ function refreshBoundaryControls(){
  $("expandedDrawActions").classList.toggle("hidden",S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
  $("expandedConfirmWalkBoundaryBtn").disabled=$("confirmWalkBoundaryBtn").disabled;
+ $("expandedStartGpsBtn").disabled=!!S.gpsStarted;
+ $("expandedStartGpsBtn").classList.toggle("gps-active",!!S.gpsStarted);
+ $("expandedStartGpsBtn").textContent=S.gpsStarted?"GPS active":"Start GPS";
+ $("startGpsBtn").disabled=!!S.gpsStarted;
+ $("startGpsBtn").textContent=S.gpsStarted?"GPS active":"Start GPS";
  $("expandedUndoBoundaryBtn").disabled=$("undoBoundaryBtn").disabled;
  $("expandedConfirmBoundaryBtn").disabled=$("confirmBoundaryBtn").disabled;
 
@@ -720,7 +748,7 @@ function startGPS(){
  $("gpsBadge").textContent="GPS starting…";
  navigator.geolocation.watchPosition(p=>{
    S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
-   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;
+   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
    updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
  },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
