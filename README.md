@@ -1,36 +1,29 @@
-# Field Quest v1.9
+# Field Quest v1.9.1
 
-Exclusion zones release, built from the v1.8.2 stable baseline.
+Follow-up patch for issues found during v1.9 exclusion-zone field testing.
 
-## New capability
-- Add one or more manually drawn exclusion zones inside a confirmed main boundary.
-- Exclusion zones are shown as red no-go polygons on setup and gameplay maps.
-- Tap the map to add exclusion-zone points.
-- Drag exclusion-zone points while drawing/editing.
-- Undo, cancel and confirm zone creation.
-- Select, edit or delete an existing zone.
-- Exclusion zones are saved and loaded with Saved Areas.
-- Existing saved areas without exclusion-zone data continue to load normally.
+## Fix 1 — Expanded exclusion-zone Undo
+When exclusion-zone drawing/editing is active, the expanded setup map now switches to
+exclusion-specific controls. Undo removes the last exclusion-zone point rather than
+showing the disabled main-boundary Undo control.
 
-## Game-engine behaviour
-- Random checkpoint placement now requires points to be:
-  - Inside the main boundary.
-  - Outside every exclusion zone.
-- A small safety buffer is also kept from exclusion-zone edges where possible.
-- If the remaining playable space cannot safely support the requested checkpoint count,
-  the app asks the user to reduce checkpoints or adjust the exclusion zones.
+## Fix 2 — Confirm zone in expanded mode
+Expanded exclusion editing now includes:
+- Undo zone point
+- Confirm zone
+- Cancel zone
+
+A zone can therefore be created or edited completely without minimising the map.
+
+## Fix 3 — Normal game-map rendering
+The normal game map now gets explicit MapLibre resize/state refreshes after the hidden
+game card becomes visible and again after the full-screen map is collapsed.
+This targets the v1.9 failure where Easy mode showed a blank normal map when the player
+started outside the main boundary, while the expanded map still rendered.
 
 ## Scope
-- Manual drawing only in v1.9.
-- Walk-an-exclusion-zone is deferred.
-- Enable/disable toggles are deferred.
-- Exclusion zones are reusable platform data for future game modes.
+The Medium-mode visual treatment for search-area overlap with exclusions remains a
+separate non-blocking UX enhancement.
 
 ## Test focus
-- Multiple zone creation.
-- Editing/deleting.
-- Boundary containment.
-- Saved-area persistence.
-- Checkpoint avoidance in Easy/Medium/Hard.
-- Small remaining playable areas.
-- Standard regression suite.
+Retest the three v1.9 failures first, then affected map/setup regression tests.

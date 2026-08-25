@@ -1,4 +1,4 @@
-const CACHE="field-quest-v19";
+const CACHE="field-quest-v191";
 const ASSETS=["./","./index.html","./manifest.webmanifest"];
 
 self.addEventListener("install",e=>{

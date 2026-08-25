@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.9</title>
+<title>Field Quest v1.9.1</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -133,17 +133,28 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .exclusion-pin{width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid white;color:white;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px #0006}
 .exclusion-drawing{outline:2px solid #ef4444;outline-offset:2px}
 
+
+.setup-map-expanded #expandedExclusionActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  width:100%;
+}
+.setup-map-expanded #expandedExclusionActions #expandedCancelExclusionBtn{
+  grid-column:1/-1;
+}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.1</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -165,6 +176,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
     <div id="expandedDrawActions" class="hidden">
       <button id="expandedUndoBoundaryBtn" class="ghost" disabled>Undo last point</button>
       <button id="expandedConfirmBoundaryBtn" class="primary" disabled>Confirm boundary</button>
+    </div>
+    <div id="expandedExclusionActions" class="hidden">
+      <button id="expandedUndoExclusionBtn" class="ghost" disabled>Undo zone point</button>
+      <button id="expandedConfirmExclusionBtn" class="primary" disabled>Confirm zone</button>
+      <button id="expandedCancelExclusionBtn" class="ghost">Cancel zone</button>
     </div>
   </div>
   <div class="control-group">
@@ -704,6 +720,15 @@ function refreshExclusionControls(){
  $("finishExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length<3;
  $("undoExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length===0;
  $("cancelExclusionBtn").disabled=!S.exclusionDrawing;
+
+ // Expanded setup controls switch to the active editing context.
+ $("expandedExclusionActions").classList.toggle("hidden",!S.exclusionDrawing);
+ $("expandedWalkActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
+ $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
+ $("expandedUndoExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length===0;
+ $("expandedConfirmExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length<3;
+ $("expandedCancelExclusionBtn").disabled=!S.exclusionDrawing;
+
  $("setupMapWrap").classList.toggle("exclusion-drawing",S.exclusionDrawing);
  updateExclusionSelection();
  if(!exclusionsValid()&&S.exclusionZones.length){
@@ -789,8 +814,8 @@ function refreshBoundaryControls(){
  $("drawBoundaryBtn").textContent=S.boundary.length>0?"Edit boundary":"Draw boundary";
  $("walkBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="walk");
  $("drawBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="draw");
- $("expandedWalkActions").classList.toggle("hidden",S.boundaryMode!=="walk");
- $("expandedDrawActions").classList.toggle("hidden",S.boundaryMode!=="draw");
+ $("expandedWalkActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
+ $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
  $("expandedConfirmWalkBoundaryBtn").disabled=$("confirmWalkBoundaryBtn").disabled;
  $("expandedStartGpsBtn").disabled=!!S.gpsStarted;
@@ -1056,11 +1081,21 @@ function bindMapState(map,prefix){
 
 function createGameMap(container){
  let prefix=container==="gameMap"?"game":"full";
- let map=newMap(container,[S.currentPos.lon,S.currentPos.lat]);
+ let centre=S.currentPos?[S.currentPos.lon,S.currentPos.lat]:(S.boundary.length?[S.boundary[0].lon,S.boundary[0].lat]:[-3.38,51.75]);
+ let map=newMap(container,centre);
  bindMapState(map,prefix);bindFollowBehaviour(map);
- map.on("load",()=>{
+
+ const refreshVisibleMap=()=>{
+   try{map.resize()}catch(e){}
    syncMapState(map,prefix);
-   fitBoundary(map);
+   if(S.boundary.length)fitBoundary(map);
+ };
+
+ map.on("load",()=>{
+   refreshVisibleMap();
+   requestAnimationFrame(()=>refreshVisibleMap());
+   setTimeout(()=>refreshVisibleMap(),120);
+   setTimeout(()=>refreshVisibleMap(),350);
  });
  map.on("rotate",updateCompassRoses);
  return map;
@@ -1094,6 +1129,17 @@ function generate(){
  $("bearingText").textContent="Waiting for GPS…";$("distanceText").textContent="—";$("progressBar").style.width="0%";
  $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
  if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
+ // The game card has just changed from hidden to visible. Force MapLibre to recalculate
+ // the normal map size after layout settles, including when the player is outside the boundary.
+ const refreshNormalGameMap=()=>{
+   if(!S.gameMap)return;
+   try{S.gameMap.resize()}catch(e){}
+   syncMapState(S.gameMap,"game");
+   if(S.boundary.length)fitBoundary(S.gameMap);
+ };
+ requestAnimationFrame(()=>refreshNormalGameMap());
+ setTimeout(()=>refreshNormalGameMap(),100);
+ setTimeout(()=>refreshNormalGameMap(),300);
  updatePlayers();updateGameUI();updateGame();updateDiagnostics();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
 function updateHardCompass(){
@@ -1235,11 +1281,17 @@ function openFull(){
    });
  });
 }
-function closeFull(){$("fullscreenMapModal").classList.add("hidden")}
-function setMapMode(m){
- S.mapMode=m;$("northUpBtn").classList.toggle("active",m==="north");$("travelUpBtn").classList.toggle("active",m==="travel");
- if(m==="north"){if(S.gameMap)S.gameMap.easeTo({bearing:0,duration:350});if(S.fullMap)S.fullMap.easeTo({bearing:0,duration:350})}else applyTravelBearing();
- updateCompassRoses();
+function closeFull(){
+ $("fullscreenMapModal").classList.add("hidden");
+ if(S.gameMap){
+   const refresh=()=>{
+     try{S.gameMap.resize()}catch(e){}
+     syncMapState(S.gameMap,"game");
+     if(S.boundary.length)fitBoundary(S.gameMap);
+   };
+   requestAnimationFrame(()=>refresh());
+   setTimeout(()=>refresh(),120);
+ }
 }
 
 $("startGpsBtn").onclick=startGPS;
@@ -1262,6 +1314,9 @@ $("cancelExclusionBtn").onclick=cancelExclusionDrawing;
 $("exclusionSelect").onchange=updateExclusionSelection;
 $("editExclusionBtn").onclick=editSelectedExclusion;
 $("deleteExclusionBtn").onclick=deleteSelectedExclusion;
+$("expandedUndoExclusionBtn").onclick=undoExclusionPoint;
+$("expandedConfirmExclusionBtn").onclick=confirmExclusionZone;
+$("expandedCancelExclusionBtn").onclick=cancelExclusionDrawing;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("expandedStartGpsBtn").onclick=startGPS;
