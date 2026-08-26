@@ -1,22 +1,23 @@
-# Field Quest v1.9.3
+# Field Quest v1.9.4
 
-Follow-up patch after a Travel Up regression was identified in v1.9.1/v1.9.2.
+UX patch following v1.9.3 release-candidate testing.
 
-## Root cause
-The map-rendering patch in v1.9.1 accidentally removed the `setMapMode()` function.
-The North Up and Travel Up buttons still called that function, so clicking Travel Up
-could not switch the map into Travel Up mode.
+## GPS action available in all boundary modes
+Start GPS is now outside the Walk-only controls, so it remains available for:
+- Walk Boundary
+- Draw/Edit Boundary
+- Loaded Saved Areas
+- Expanded setup map
 
-## Fix
-- Restored the proven `setMapMode()` implementation from the v1.8.2 stable baseline.
-- North Up and Travel Up now switch `S.mapMode` correctly again.
-- Travel Up continues to use the existing heading/fallback logic in `applyTravelBearing()`.
-- v1.9.2 GPS gating and first-checkpoint-distance improvements are retained.
-- Exclusion-zone fixes from v1.9.1 are retained.
+## GPS requirement shown where the game is started
+The Game settings section now shows the GPS state directly beside Generate game.
+Before GPS is ready it:
+- Explains why Generate game is unavailable.
+- Provides its own Start GPS button.
 
-## Test focus
-- Confirm Travel Up button becomes active when selected.
-- Walk in several directions and confirm map bearing follows direction of travel.
-- Switch repeatedly between North Up and Travel Up.
-- Test both normal and expanded game maps.
-- Continue the remaining v1.9.2 regression tests.
+Once a usable fix arrives it changes to:
+“GPS ready. You can generate the game.”
+
+All Start GPS buttons stay synchronised and GPS errors allow retry.
+
+The v1.9.3 Travel Up repair and earlier exclusion-zone fixes are retained.

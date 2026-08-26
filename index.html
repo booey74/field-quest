@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.9.3</title>
+<title>Field Quest v1.9.4</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -144,17 +144,26 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   grid-column:1/-1;
 }
 
+
+.gps-setup-row{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+.gps-setup-row button{width:100%}
+.game-start-status{margin:10px 0 0;padding:12px 14px;border:1px solid #334155;border-radius:14px;background:#0b1324;color:#cbd5e1;font-size:.94rem;line-height:1.35}
+.game-start-status.ready{border-color:#166534;background:#052e16;color:#bbf7d0}
+.game-start-status.waiting{border-color:#854d0e;background:#2a1d05;color:#fde68a}
+.game-start-gps-row{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.expanded-gps-action{display:grid;grid-template-columns:1fr;width:100%;margin-bottom:8px}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.3</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.4</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.3</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.4</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -168,8 +177,10 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <div class="compass-mini"><div class="heading-marker"></div><div id="setupCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
   <div class="control-bar">
   <div class="expanded-boundary-actions">
-    <div id="expandedWalkActions">
+    <div class="expanded-gps-action">
       <button id="expandedStartGpsBtn" class="primary">Start GPS</button>
+    </div>
+    <div id="expandedWalkActions">
       <button id="expandedMarkPointBtn" disabled>Mark boundary point</button>
       <button id="expandedConfirmWalkBoundaryBtn" class="primary" disabled>Confirm boundary</button>
     </div>
@@ -189,8 +200,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   </div>
 </div>
 </div>
+<div class="gps-setup-row">
+  <button id="startGpsBtn" class="primary">Start GPS</button>
+</div>
 <div id="walkBoundaryControls">
-  <div class="button-row"><button id="startGpsBtn" class="primary">Start GPS</button><button id="markPointBtn" disabled>Mark boundary point</button></div>
+  <div class="button-row"><button id="markPointBtn" disabled>Mark boundary point</button></div>
   <button id="confirmWalkBoundaryBtn" class="primary wide" disabled>Confirm boundary</button>
 </div>
 <div id="drawBoundaryControls" class="hidden">
@@ -267,6 +281,10 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 <h2>4. Game settings</h2>
 <label>Checkpoints<input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
+<div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
+<div class="game-start-gps-row">
+  <button id="gameStartGpsBtn" class="primary">Start GPS</button>
+</div>
 <button id="generateBtn" class="primary wide" disabled>Generate game</button>
 </section>
 
@@ -583,6 +601,29 @@ function updateCompassRoses(){
  $("gameCompassRose").style.transform=`rotate(${-gameBearing}deg)`;
  $("fullCompassRose").style.transform=`rotate(${-fullBearing}deg)`;
 }
+
+function refreshGpsUi(){
+ const active=!!S.gpsReady;
+ const started=!!S.gpsStarted;
+ const label=active?"GPS active":(started?"GPS starting…":"Start GPS");
+ ["startGpsBtn","expandedStartGpsBtn","gameStartGpsBtn"].forEach(id=>{
+   const el=$(id);if(!el)return;
+   el.disabled=active;
+   el.textContent=label;
+   el.classList.toggle("gps-active",active);
+ });
+ const status=$("gameStartStatus");
+ if(status){
+   status.classList.toggle("ready",active);
+   status.classList.toggle("waiting",!active);
+   status.textContent=active
+     ?"GPS ready. You can generate the game."
+     :"GPS required before the game can start. Tap Start GPS and wait for your position to be found.";
+ }
+ const generate=$("generateBtn");
+ if(generate)generate.disabled=!boundaryReady()||!exclusionsValid()||!active;
+}
+
 function refreshTravelUpAvailability(){
  const disabled=!S.gpsReady;
  if($("travelUpBtn"))$("travelUpBtn").disabled=disabled;
@@ -774,7 +815,7 @@ function refreshExclusionControls(){
  }else{
    $("exclusionStatus").textContent=S.exclusionZones.length?`${S.exclusionZones.length} exclusion zone${S.exclusionZones.length===1?"":"s"} active.`:"";
  }
- $("generateBtn").disabled=!boundaryReady()||!exclusionsValid()||!S.gpsReady;
+ refreshGpsUi();
  $("saveBoundaryBtn").disabled=!boundaryReady()||!exclusionsValid();
 }
 function startExclusionDrawing(editId=null){
@@ -852,11 +893,7 @@ function refreshBoundaryControls(){
  $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
  $("expandedConfirmWalkBoundaryBtn").disabled=$("confirmWalkBoundaryBtn").disabled;
- $("expandedStartGpsBtn").disabled=!!S.gpsStarted;
- $("expandedStartGpsBtn").classList.toggle("gps-active",!!S.gpsStarted);
- $("expandedStartGpsBtn").textContent=S.gpsStarted?"GPS active":"Start GPS";
- $("startGpsBtn").disabled=!!S.gpsStarted;
- $("startGpsBtn").textContent=S.gpsStarted?"GPS active":"Start GPS";
+ refreshGpsUi();
  $("expandedUndoBoundaryBtn").disabled=$("undoBoundaryBtn").disabled;
  $("expandedConfirmBoundaryBtn").disabled=$("confirmBoundaryBtn").disabled;
 
@@ -988,12 +1025,14 @@ function updateSetup(){
 }
 function startGPS(){
  if(!navigator.geolocation){alert("GPS is not supported on this device.");return}
+ S.gpsStarted=true;S.gpsReady=false;
  $("gpsBadge").textContent="GPS starting…";
+ refreshGpsUi();
  navigator.geolocation.watchPosition(p=>{
    S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
-   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;S.gpsReady=true;refreshTravelUpAvailability();$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
+   $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;S.gpsReady=true;refreshTravelUpAvailability();refreshGpsUi();$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
    updateSetup();updatePlayers();updateGame();applyTravelBearing();updateHardCompass();
- },()=>{alert("Please allow precise location.");$("gpsBadge").textContent="GPS error"},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+ },()=>{S.gpsStarted=false;S.gpsReady=false;alert("Please allow precise location.");$("gpsBadge").textContent="GPS error";refreshGpsUi()},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
 function markBoundary(){
  if(!S.currentPos || S.boundaryMode!=="walk")return;
@@ -1354,6 +1393,7 @@ function setMapMode(m){
 }
 
 $("startGpsBtn").onclick=startGPS;
+$("gameStartGpsBtn").onclick=startGPS;
 $("markPointBtn").onclick=markBoundary;
 $("confirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("clearBoundaryBtn").onclick=clearBoundary;
@@ -1392,7 +1432,7 @@ $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[]};
 
-ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();
+ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
