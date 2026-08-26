@@ -1,31 +1,43 @@
-# Field Quest v1.9.5
+# Field Quest v1.10
 
-Focused UI patch following v1.9.4 release-candidate testing.
+Release candidate built from the proven v1.9.5 stable baseline.
 
-## Fix — context-aware collapsed setup controls
-When exclusion-zone drawing/editing is active:
+## New: exclusion-zone proximity safety warnings
 
-- The controls directly beneath the normal/collapsed setup map now switch to:
-  - Undo zone point
-  - Confirm zone
-  - Cancel zone
-- Main-boundary Walk/Draw controls are hidden until exclusion editing ends.
-- The collapsed controls stay synchronised with the expanded exclusion controls.
-- Undo/Confirm enabled states match the current exclusion draft.
-- Confirming or cancelling restores the correct Walk/Draw boundary controls.
+During an active game, Field Quest now monitors the player's live GPS position
+against all active exclusion zones.
 
-This means the map-associated controls now reflect the current editing task in both
-collapsed and expanded views.
+### Warning states
+- Safe: no warning shown.
+- Approach: caution banner appears when the player is close to an exclusion zone.
+- Inside: warning escalates to a stronger danger message asking the player to move away.
 
-## Retained behaviour
-- v1.9.4 GPS discoverability and Game settings guidance.
-- v1.9.3 Travel Up repair.
-- Exclusion-zone placement, editing, persistence and checkpoint avoidance.
-- Normal/expanded game-map fixes.
+### GPS-aware threshold
+The approach threshold allows for reported phone GPS accuracy rather than waiting
+for an exact polygon-edge crossing. The threshold is bounded so a poor GPS fix does
+not create an unreasonably large warning area.
 
-## Test focus
-1. Start adding an exclusion zone in collapsed mode and confirm the controls below the map switch immediately.
-2. Expand and minimise while editing and confirm the same actions remain available.
-3. Test Undo zone point, Confirm zone and Cancel zone in both views.
-4. Confirm normal Walk/Draw controls return after exclusion editing ends.
-5. Re-run affected exclusion/setup regression tests.
+### Anti-flicker behaviour
+A separate clearing distance is used after a warning has started. This hysteresis
+helps prevent warnings rapidly appearing/disappearing when GPS drifts around the edge.
+
+### Feedback
+- Warning is visible in normal gameplay.
+- Warning is also visible over the expanded game map.
+- Vibration is used where supported:
+  - short double pulse on approach
+  - stronger double pulse on entry
+- Vibration has a cooldown to avoid alert spam.
+
+### Deliberately deferred
+- Zone names/types such as Road or Water.
+- Audio/speech alerts.
+- Per-zone warning settings.
+
+## Safety position
+This is supplementary guidance only. Phone GPS can drift and Field Quest is not
+a safety-critical navigation system. Parental supervision remains essential.
+
+## Regression requirement
+v1.9.5 behaviour must remain intact, including exclusion placement/persistence,
+GPS gating, Easy/Medium/Hard gameplay, Travel Up, and collapsed/expanded map controls.
