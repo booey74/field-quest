@@ -1,43 +1,46 @@
-# Field Quest v1.10
+# Field Quest v1.10.1
 
-Release candidate built from the proven v1.9.5 stable baseline.
+Focused tuning patch for the v1.10 exclusion-zone proximity warning feature.
 
-## New: exclusion-zone proximity safety warnings
+## Changes from v1.10
 
-During an active game, Field Quest now monitors the player's live GPS position
-against all active exclusion zones.
+### Approach warning distance
+Previous behaviour:
+- GPS accuracy + 6 m
+- Clamped to 10–25 m
 
-### Warning states
-- Safe: no warning shown.
-- Approach: caution banner appears when the player is close to an exclusion zone.
-- Inside: warning escalates to a stronger danger message asking the player to move away.
+New behaviour:
+- 8 m base + 25% of reported GPS accuracy
+- Clamped to 8–14 m
 
-### GPS-aware threshold
-The approach threshold allows for reported phone GPS accuracy rather than waiting
-for an exact polygon-edge crossing. The threshold is bounded so a poor GPS fix does
-not create an unreasonably large warning area.
+Examples:
+- 4 m GPS accuracy -> 9 m warning threshold
+- 8 m accuracy -> 10 m
+- 12 m accuracy -> 11 m
+- 20 m accuracy -> 13 m
+- Very poor accuracy remains capped at 14 m
 
-### Anti-flicker behaviour
-A separate clearing distance is used after a warning has started. This hysteresis
-helps prevent warnings rapidly appearing/disappearing when GPS drifts around the edge.
+### Warning clear distance
+Previous:
+- Approach threshold + 8 m
 
-### Feedback
-- Warning is visible in normal gameplay.
-- Warning is also visible over the expanded game map.
-- Vibration is used where supported:
-  - short double pulse on approach
-  - stronger double pulse on entry
-- Vibration has a cooldown to avoid alert spam.
+New:
+- Approach threshold + 4 m
 
-### Deliberately deferred
-- Zone names/types such as Road or Water.
-- Audio/speech alerts.
-- Per-zone warning settings.
+This keeps some hysteresis to reduce GPS-edge flicker without requiring the player
+to move an excessive distance away before the warning disappears.
 
-## Safety position
-This is supplementary guidance only. Phone GPS can drift and Field Quest is not
-a safety-critical navigation system. Parental supervision remains essential.
+## Unchanged behaviour
+- CAUTION when approaching an exclusion zone
+- DANGER when inside a zone
+- Expanded-map warning
+- Vibration feedback and cooldown
+- Warning reset on game end
+- v1.9.5 core setup/gameplay/navigation behaviour
 
-## Regression requirement
-v1.9.5 behaviour must remain intact, including exclusion placement/persistence,
-GPS gating, Easy/Medium/Hard gameplay, Travel Up, and collapsed/expanded map controls.
+## Retest focus
+1. Approach distance now feels appropriately close in real outdoor use.
+2. Warning clears after a sensible move-away distance without flickering.
+3. Safe -> CAUTION -> DANGER -> CAUTION -> safe sequence.
+4. Multiple exclusion zones: transition between zones without getting stuck on the previous one.
+5. Full affected regression tests.
