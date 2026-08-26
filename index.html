@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.9.4</title>
+<title>Field Quest v1.9.5</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -153,17 +153,22 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .game-start-gps-row{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .expanded-gps-action{display:grid;grid-template-columns:1fr;width:100%;margin-bottom:8px}
 
+
+#collapsedExclusionActions{margin-top:10px}
+#collapsedExclusionActions .draw-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#collapsedExclusionActions .wide{margin-top:10px}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.4</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.9.5</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.4</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.9.5</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -202,6 +207,13 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </div>
 <div class="gps-setup-row">
   <button id="startGpsBtn" class="primary">Start GPS</button>
+</div>
+<div id="collapsedExclusionActions" class="hidden">
+  <div class="draw-actions">
+    <button id="collapsedUndoExclusionBtn" class="ghost" disabled>Undo zone point</button>
+    <button id="collapsedConfirmExclusionBtn" class="primary" disabled>Confirm zone</button>
+  </div>
+  <button id="collapsedCancelExclusionBtn" class="ghost wide">Cancel zone</button>
 </div>
 <div id="walkBoundaryControls">
   <div class="button-row"><button id="markPointBtn" disabled>Mark boundary point</button></div>
@@ -798,11 +810,20 @@ function refreshExclusionControls(){
 
  // Expanded setup controls switch to the active editing context.
  $("expandedExclusionActions").classList.toggle("hidden",!S.exclusionDrawing);
+ $("collapsedExclusionActions").classList.toggle("hidden",!S.exclusionDrawing);
  $("expandedWalkActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
  $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
- $("expandedUndoExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length===0;
- $("expandedConfirmExclusionBtn").disabled=!S.exclusionDrawing||S.exclusionDraft.length<3;
+
+ const noDraftPoints=!S.exclusionDrawing||S.exclusionDraft.length===0;
+ const notConfirmable=!S.exclusionDrawing||S.exclusionDraft.length<3;
+
+ $("expandedUndoExclusionBtn").disabled=noDraftPoints;
+ $("expandedConfirmExclusionBtn").disabled=notConfirmable;
  $("expandedCancelExclusionBtn").disabled=!S.exclusionDrawing;
+
+ $("collapsedUndoExclusionBtn").disabled=noDraftPoints;
+ $("collapsedConfirmExclusionBtn").disabled=notConfirmable;
+ $("collapsedCancelExclusionBtn").disabled=!S.exclusionDrawing;
 
  $("setupMapWrap").classList.toggle("exclusion-drawing",S.exclusionDrawing);
  updateExclusionSelection();
@@ -823,7 +844,7 @@ function startExclusionDrawing(editId=null){
  S.exclusionDrawing=true;S.editingExclusionId=editId;
  const existing=editId?exclusionById(editId):null;
  S.exclusionDraft=existing?cloneBoundary(existing.points):[];
- refreshExclusionControls();updateSetup();
+ refreshExclusionControls();refreshBoundaryControls();updateSetup();
 }
 function addExclusionPoint(lngLat){
  if(!S.exclusionDrawing)return false;
@@ -836,7 +857,7 @@ function undoExclusionPoint(){
  S.exclusionDraft.pop();refreshExclusionControls();updateSetup();
 }
 function cancelExclusionDrawing(){
- S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;refreshExclusionControls();updateSetup();
+ S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;refreshExclusionControls();refreshBoundaryControls();updateSetup();
 }
 function confirmExclusionZone(){
  if(!S.exclusionDrawing||S.exclusionDraft.length<3)return;
@@ -849,7 +870,7 @@ function confirmExclusionZone(){
  }
  S.loadedSavedBoundaryId=null;
  S.exclusionDrawing=false;S.exclusionDraft=[];S.editingExclusionId=null;
- renderExclusionList();refreshExclusionControls();updateSetup();
+ renderExclusionList();refreshExclusionControls();refreshBoundaryControls();updateSetup();
 }
 function editSelectedExclusion(){
  const id=$("exclusionSelect").value;if(id)startExclusionDrawing(id);
@@ -887,8 +908,8 @@ function refreshBoundaryControls(){
  $("walkBoundaryBtn").classList.toggle("active",S.boundaryMode==="walk");
  $("drawBoundaryBtn").classList.toggle("active",S.boundaryMode==="draw");
  $("drawBoundaryBtn").textContent=S.boundary.length>0?"Edit boundary":"Draw boundary";
- $("walkBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="walk");
- $("drawBoundaryControls").classList.toggle("hidden",S.boundaryMode!=="draw");
+ $("walkBoundaryControls").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
+ $("drawBoundaryControls").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
  $("expandedWalkActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
  $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
@@ -1416,6 +1437,9 @@ $("deleteExclusionBtn").onclick=deleteSelectedExclusion;
 $("expandedUndoExclusionBtn").onclick=undoExclusionPoint;
 $("expandedConfirmExclusionBtn").onclick=confirmExclusionZone;
 $("expandedCancelExclusionBtn").onclick=cancelExclusionDrawing;
+$("collapsedUndoExclusionBtn").onclick=undoExclusionPoint;
+$("collapsedConfirmExclusionBtn").onclick=confirmExclusionZone;
+$("collapsedCancelExclusionBtn").onclick=cancelExclusionDrawing;
 $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("expandedStartGpsBtn").onclick=startGPS;

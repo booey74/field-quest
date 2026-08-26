@@ -1,23 +1,31 @@
-# Field Quest v1.9.4
+# Field Quest v1.9.5
 
-UX patch following v1.9.3 release-candidate testing.
+Focused UI patch following v1.9.4 release-candidate testing.
 
-## GPS action available in all boundary modes
-Start GPS is now outside the Walk-only controls, so it remains available for:
-- Walk Boundary
-- Draw/Edit Boundary
-- Loaded Saved Areas
-- Expanded setup map
+## Fix — context-aware collapsed setup controls
+When exclusion-zone drawing/editing is active:
 
-## GPS requirement shown where the game is started
-The Game settings section now shows the GPS state directly beside Generate game.
-Before GPS is ready it:
-- Explains why Generate game is unavailable.
-- Provides its own Start GPS button.
+- The controls directly beneath the normal/collapsed setup map now switch to:
+  - Undo zone point
+  - Confirm zone
+  - Cancel zone
+- Main-boundary Walk/Draw controls are hidden until exclusion editing ends.
+- The collapsed controls stay synchronised with the expanded exclusion controls.
+- Undo/Confirm enabled states match the current exclusion draft.
+- Confirming or cancelling restores the correct Walk/Draw boundary controls.
 
-Once a usable fix arrives it changes to:
-“GPS ready. You can generate the game.”
+This means the map-associated controls now reflect the current editing task in both
+collapsed and expanded views.
 
-All Start GPS buttons stay synchronised and GPS errors allow retry.
+## Retained behaviour
+- v1.9.4 GPS discoverability and Game settings guidance.
+- v1.9.3 Travel Up repair.
+- Exclusion-zone placement, editing, persistence and checkpoint avoidance.
+- Normal/expanded game-map fixes.
 
-The v1.9.3 Travel Up repair and earlier exclusion-zone fixes are retained.
+## Test focus
+1. Start adding an exclusion zone in collapsed mode and confirm the controls below the map switch immediately.
+2. Expand and minimise while editing and confirm the same actions remain available.
+3. Test Undo zone point, Confirm zone and Cancel zone in both views.
+4. Confirm normal Walk/Draw controls return after exclusion editing ends.
+5. Re-run affected exclusion/setup regression tests.
