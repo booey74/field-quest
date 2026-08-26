@@ -1,46 +1,39 @@
-# Field Quest v1.10.1
+# Field Quest v1.10.2
 
-Focused tuning patch for the v1.10 exclusion-zone proximity warning feature.
+Focused real-world tuning patch for exclusion-zone proximity warnings.
 
-## Changes from v1.10
+## Warning distances
 
-### Approach warning distance
-Previous behaviour:
-- GPS accuracy + 6 m
-- Clamped to 10–25 m
+### CAUTION
+- Fixed 3 m border around each exclusion-zone edge.
 
-New behaviour:
-- 8 m base + 25% of reported GPS accuracy
-- Clamped to 8–14 m
+### DANGER
+- Triggered only when the live GPS position is inside the exclusion polygon.
 
-Examples:
-- 4 m GPS accuracy -> 9 m warning threshold
-- 8 m accuracy -> 10 m
-- 12 m accuracy -> 11 m
-- 20 m accuracy -> 13 m
-- Very poor accuracy remains capped at 14 m
+### Clear
+- CAUTION remains active until the player is more than 4 m from the exclusion-zone edge.
+- This gives 1 m of hysteresis to reduce edge flicker.
 
-### Warning clear distance
-Previous:
-- Approach threshold + 8 m
+## Why this changed
+Earlier versions used broader GPS-aware warning ranges. Field testing showed that
+the warning was active too often, creating warning fatigue and reducing its impact.
 
-New:
-- Approach threshold + 4 m
-
-This keeps some hysteresis to reduce GPS-edge flicker without requiring the player
-to move an excessive distance away before the warning disappears.
+v1.10.2 intentionally makes CAUTION a genuinely near-hazard warning rather than a
+large safety halo.
 
 ## Unchanged behaviour
-- CAUTION when approaching an exclusion zone
-- DANGER when inside a zone
-- Expanded-map warning
-- Vibration feedback and cooldown
-- Warning reset on game end
-- v1.9.5 core setup/gameplay/navigation behaviour
+- Normal and expanded-map warning UI.
+- Distinct CAUTION / DANGER states.
+- Vibration on first approach and on escalation to DANGER.
+- Vibration cooldown.
+- Warning reset on game end.
+- v1.9.5 platform behaviour and v1.10 warning-state architecture.
 
-## Retest focus
-1. Approach distance now feels appropriately close in real outdoor use.
-2. Warning clears after a sensible move-away distance without flickering.
-3. Safe -> CAUTION -> DANGER -> CAUTION -> safe sequence.
-4. Multiple exclusion zones: transition between zones without getting stuck on the previous one.
-5. Full affected regression tests.
+## Test focus
+1. Safe -> CAUTION at about 3 m.
+2. DANGER only on polygon entry.
+3. DANGER -> CAUTION on exit.
+4. CAUTION -> safe once more than about 4 m away.
+5. Warning does not dominate normal gameplay.
+6. Test transitions between multiple exclusion zones.
+7. Confirm no regressions in gameplay/navigation/setup.

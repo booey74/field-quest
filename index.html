@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.10.1</title>
+<title>Field Quest v1.10.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -207,11 +207,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.10.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.10.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.10.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.10.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -484,10 +484,9 @@ function activeGameForSafetyWarnings(){
  return !!card && !card.classList.contains("hidden") && S.checkpoints.length>0;
 }
 function exclusionWarningThreshold(){
- const accuracy=(S.currentPos&&Number.isFinite(S.currentPos.accuracy))?S.currentPos.accuracy:10;
- // Keep warnings useful but not overly conservative: 8m base plus a modest
- // allowance for GPS uncertainty, bounded to an 8–14m approach band.
- return Math.max(8,Math.min(14,8+(accuracy*0.25)));
+ // Real-world tuning: CAUTION should feel exceptional, not permanent.
+ // Trigger only when the player is within 3m of an exclusion-zone edge.
+ return 3;
 }
 function nearestExclusionStatus(){
  if(!S.currentPos||!S.exclusionZones.length)return null;
@@ -540,7 +539,7 @@ function updateExclusionSafetyWarning(){
  if(!nearest){resetExclusionWarning();return}
 
  const approach=exclusionWarningThreshold();
- const clearDistance=approach+4; // smaller hysteresis: reduce flicker without keeping warnings active too far away.
+ const clearDistance=approach+1; // 1m hysteresis: CAUTION clears once the player is more than 4m from the zone.
  let next="safe";
 
  if(nearest.inside){
