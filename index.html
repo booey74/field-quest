@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.10.2</title>
+<title>Field Quest v1.11</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -207,11 +207,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.10.2</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.11</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.10.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.11</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -230,6 +230,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
     </div>
     <div id="expandedWalkActions">
       <button id="expandedMarkPointBtn" disabled>Mark boundary point</button>
+      <button id="expandedUndoWalkPointBtn" class="ghost" disabled>Undo last point</button>
       <button id="expandedConfirmWalkBoundaryBtn" class="primary" disabled>Confirm boundary</button>
     </div>
     <div id="expandedDrawActions" class="hidden">
@@ -259,7 +260,10 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <button id="collapsedCancelExclusionBtn" class="ghost wide">Cancel zone</button>
 </div>
 <div id="walkBoundaryControls">
-  <div class="button-row"><button id="markPointBtn" disabled>Mark boundary point</button></div>
+  <div class="button-row">
+    <button id="markPointBtn" disabled>Mark boundary point</button>
+    <button id="undoWalkPointBtn" class="ghost" disabled>Undo last point</button>
+  </div>
   <button id="confirmWalkBoundaryBtn" class="primary wide" disabled>Confirm boundary</button>
 </div>
 <div id="drawBoundaryControls" class="hidden">
@@ -1041,6 +1045,7 @@ function refreshBoundaryControls(){
  $("undoBoundaryBtn").disabled=S.boundary.length===0 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
  $("confirmBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="draw" || S.boundaryConfirmed;
  $("confirmWalkBoundaryBtn").disabled=S.boundary.length<3 || S.boundaryMode!=="walk" || S.boundaryConfirmed;
+ $("undoWalkPointBtn").disabled=S.boundary.length===0 || S.boundaryMode!=="walk" || S.boundaryConfirmed;
  $("generateBtn").disabled=!boundaryReady();
  $("saveBoundaryBtn").disabled=!boundaryReady();
 
@@ -1052,6 +1057,7 @@ function refreshBoundaryControls(){
  $("expandedWalkActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="walk");
  $("expandedDrawActions").classList.toggle("hidden",S.exclusionDrawing||S.boundaryMode!=="draw");
  $("expandedMarkPointBtn").disabled=$("markPointBtn").disabled;
+ $("expandedUndoWalkPointBtn").disabled=$("undoWalkPointBtn").disabled;
  $("expandedConfirmWalkBoundaryBtn").disabled=$("confirmWalkBoundaryBtn").disabled;
  refreshGpsUi();
  $("expandedUndoBoundaryBtn").disabled=$("undoBoundaryBtn").disabled;
@@ -1078,6 +1084,15 @@ function refreshBoundaryControls(){
  }
  refreshExclusionControls();
 }
+function undoWalkBoundaryPoint(){
+ if(S.boundaryMode!=="walk"||S.boundaryConfirmed||!S.boundary.length)return;
+ S.loadedSavedBoundaryId=null;
+ S.boundary.pop();
+ refreshBoundaryControls();
+ updateSetup();
+ updateDiagnostics();
+}
+
 function confirmWalkBoundary(){
  if(S.boundaryMode!=="walk" || S.boundary.length<3)return;
  S.boundaryConfirmed=true;
@@ -1138,9 +1153,45 @@ function toggleSetupMapExpanded(force){
  },80);
 }
 
+
+const LAST_LOCATION_KEY="fieldQuestLastLocation";
+function saveLastKnownLocation(pos){
+ if(!pos||!Number.isFinite(pos.lat)||!Number.isFinite(pos.lon))return;
+ try{localStorage.setItem(LAST_LOCATION_KEY,JSON.stringify({lat:pos.lat,lon:pos.lon,timestamp:Date.now()}))}catch(e){}
+}
+function loadLastKnownLocation(){
+ try{
+  const p=JSON.parse(localStorage.getItem(LAST_LOCATION_KEY)||"null");
+  return p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)?p:null;
+ }catch(e){return null}
+}
+function centreOfBoundary(points){
+ if(!Array.isArray(points)||!points.length)return null;
+ let lat=0,lon=0,n=0;
+ points.forEach(p=>{if(p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)){lat+=p.lat;lon+=p.lon;n++}});
+ return n?{lat:lat/n,lon:lon/n}:null;
+}
+function startupMapCentre(){
+ const last=loadLastKnownLocation();
+ if(last)return[last.lon,last.lat];
+
+ const current=centreOfBoundary(S.boundary);
+ if(current)return[current.lon,current.lat];
+
+ try{
+  const saved=JSON.parse(localStorage.getItem("fieldQuestSavedBoundariesV1")||"[]");
+  if(Array.isArray(saved)){
+   const item=saved.find(x=>Array.isArray(x.boundary)&&x.boundary.length>=3);
+   const c=item?centreOfBoundary(item.boundary):null;
+   if(c)return[c.lon,c.lat];
+  }
+ }catch(e){}
+ return[-3.38,51.75];
+}
+
 function ensureSetupMap(){
  if(S.setupMap)return;
- S.setupMap=newMap("setupMap",[-3.38,51.75]);
+ S.setupMap=newMap("setupMap",startupMapCentre());
  bindFollowBehaviour(S.setupMap);S.setupMap.on("load",()=>{ensureAreaLayers(S.setupMap);updateMapData(S.setupMap)});
  S.setupMap.on("rotate",updateCompassRoses);
  S.setupMap.on("click",e=>{if(addExclusionPoint(e.lngLat))return;addDrawBoundaryPoint(e.lngLat)});
@@ -1189,7 +1240,7 @@ function startGPS(){
  $("gpsBadge").textContent="GPS starting…";
  refreshGpsUi();
  navigator.geolocation.watchPosition(p=>{
-   S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};updateHeading(p);
+   S.prevPos=S.currentPos;S.currentPos={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};saveLastKnownLocation(S.currentPos);updateHeading(p);
    $("gpsBadge").textContent="GPS active";$("accuracyText").textContent=Math.round(p.coords.accuracy)+" m";S.gpsStarted=true;S.gpsReady=true;refreshTravelUpAvailability();refreshGpsUi();$("markPointBtn").disabled=false;$("expandedMarkPointBtn").disabled=false;refreshBoundaryControls();
    updateSetup();updatePlayers();updateGame();updateExclusionSafetyWarning();applyTravelBearing();updateHardCompass();
  },()=>{S.gpsStarted=false;S.gpsReady=false;alert("Please allow precise location.");$("gpsBadge").textContent="GPS error";refreshGpsUi()},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
@@ -1555,6 +1606,7 @@ function setMapMode(m){
 $("startGpsBtn").onclick=startGPS;
 $("gameStartGpsBtn").onclick=startGPS;
 $("markPointBtn").onclick=markBoundary;
+$("undoWalkPointBtn").onclick=undoWalkBoundaryPoint;
 $("confirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("clearBoundaryBtn").onclick=clearBoundary;
 $("walkBoundaryBtn").onclick=()=>setBoundaryMode("walk");
@@ -1583,6 +1635,7 @@ $("recenterSetupBtn").onclick=()=>enableFollow(S.setupMap);
 $("expandSetupBtn").onclick=()=>toggleSetupMapExpanded();
 $("expandedStartGpsBtn").onclick=startGPS;
 $("expandedMarkPointBtn").onclick=markBoundary;
+$("expandedUndoWalkPointBtn").onclick=undoWalkBoundaryPoint;
 $("expandedConfirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
 $("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;

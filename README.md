@@ -1,39 +1,20 @@
-# Field Quest v1.10.2
+# Field Quest v1.11
 
-Focused real-world tuning patch for exclusion-zone proximity warnings.
+Setup-polish release built from the proven v1.10.2 baseline.
 
-## Warning distances
+## Startup map location
+- Stores the latest usable Field Quest GPS position locally.
+- On a later launch, uses that position as the setup-map centre.
+- If unavailable, tries the current boundary centre, then a saved-boundary centre.
+- Uses the generic fallback only when no familiar location exists.
+- The stored position is a map-centre convenience, not a claim that the player is currently there.
 
-### CAUTION
-- Fixed 3 m border around each exclusion-zone edge.
+## Walk Boundary Undo
+- Adds Undo last point in normal Walk Boundary setup.
+- Adds the same control in expanded setup.
+- Removes only the most recently marked walked point.
+- Disabled when there is nothing to undo or the boundary is already confirmed.
+- Walk boundary must still be confirmed after editing.
 
-### DANGER
-- Triggered only when the live GPS position is inside the exclusion polygon.
-
-### Clear
-- CAUTION remains active until the player is more than 4 m from the exclusion-zone edge.
-- This gives 1 m of hysteresis to reduce edge flicker.
-
-## Why this changed
-Earlier versions used broader GPS-aware warning ranges. Field testing showed that
-the warning was active too often, creating warning fatigue and reducing its impact.
-
-v1.10.2 intentionally makes CAUTION a genuinely near-hazard warning rather than a
-large safety halo.
-
-## Unchanged behaviour
-- Normal and expanded-map warning UI.
-- Distinct CAUTION / DANGER states.
-- Vibration on first approach and on escalation to DANGER.
-- Vibration cooldown.
-- Warning reset on game end.
-- v1.9.5 platform behaviour and v1.10 warning-state architecture.
-
-## Test focus
-1. Safe -> CAUTION at about 3 m.
-2. DANGER only on polygon entry.
-3. DANGER -> CAUTION on exit.
-4. CAUTION -> safe once more than about 4 m away.
-5. Warning does not dominate normal gameplay.
-6. Test transitions between multiple exclusion zones.
-7. Confirm no regressions in gameplay/navigation/setup.
+## Retained
+All v1.10.2 proximity-warning, exclusion-zone, saved-area, GPS, navigation and gameplay behaviour.
