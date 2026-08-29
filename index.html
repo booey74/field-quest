@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.11</title>
+<title>Field Quest v1.11.1</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -207,11 +207,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.11</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.11.1</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.11</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.11.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -522,10 +522,10 @@ function setExclusionWarningUi(level){
  if($("exclusionSafetyText"))$("exclusionSafetyText").textContent=text;
  if($("fullExclusionSafetyText"))$("fullExclusionSafetyText").textContent=text;
 }
-function vibrateExclusionWarning(level){
+function vibrateExclusionWarning(level,force=false){
  if(!navigator.vibrate||level==="safe")return;
  const now=Date.now();
- if(now-S.exclusionWarningLastVibrate<5000)return;
+ if(!force && now-S.exclusionWarningLastVibrate<5000)return;
  S.exclusionWarningLastVibrate=now;
  try{navigator.vibrate(level==="inside"?[450,120,450]:[180,100,180])}catch(e){}
 }
@@ -564,7 +564,12 @@ function updateExclusionSafetyWarning(){
    setExclusionWarningUi(next);
 
    // Vibrate on first approach and whenever warning escalates to inside.
-   if((previous==="safe"&&next==="approach")||next==="inside")vibrateExclusionWarning(next);
+   if(previous==="safe"&&next==="approach"){
+     vibrateExclusionWarning(next);
+   }else if(next==="inside"){
+     // Escalation to DANGER is important enough to bypass the anti-spam cooldown.
+     vibrateExclusionWarning(next,true);
+   }
  }else{
    setExclusionWarningUi(next);
  }
