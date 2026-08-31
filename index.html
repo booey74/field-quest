@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.12.1</title>
+<title>Field Quest v1.12.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -202,42 +202,6 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 }
 
 
-.found-hider-marker{
-  position:relative;
-  width:42px;
-  height:48px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));
-}
-.found-hider-dot{
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:22px;
-  background:#fff;
-  border:3px solid #22c55e;
-}
-.found-hider-num{
-  position:absolute;
-  right:-2px;
-  top:-2px;
-  width:20px;
-  height:20px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:800;
-  font-size:11px;
-  background:#0f172a;
-  color:#fff;
-  border:2px solid #fff;
-}
 
 </style>
 </head>
@@ -245,11 +209,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.12.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.12.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.12.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.12.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -455,7 +419,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,foundHiderMarkers:[],fullFoundHiderMarkers:[]
+ gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,hideSeekCompleted:false
 };
 
 const Q=[
@@ -732,6 +696,8 @@ function showHideSeekNotice(text){
 }
 
 function completeHideSeek(){
+ if(S.hideSeekCompleted)return;
+ S.hideSeekCompleted=true;
  $("challengePanel").classList.add("hidden");
  $("hardNavPanel").classList.add("hidden");
  $("checkpointEyebrow").textContent="ALL FOUND";
@@ -749,44 +715,34 @@ function completeHideSeek(){
 }
 
 
-function clearFoundHiderMarkers(){
- for(const m of S.foundHiderMarkers||[])try{m.remove()}catch(e){}
- for(const m of S.fullFoundHiderMarkers||[])try{m.remove()}catch(e){}
- S.foundHiderMarkers=[];
- S.fullFoundHiderMarkers=[];
+function foundHidersGeo(){
+ if(!isHideSeek())return {type:"FeatureCollection",features:[]};
+ return {
+   type:"FeatureCollection",
+   features:S.checkpoints
+     .filter(h=>h.found)
+     .map(h=>({
+       type:"Feature",
+       geometry:{type:"Point",coordinates:[h.lon,h.lat]},
+       properties:{hiderId:h.hiderId}
+     }))
+ };
 }
 
-function foundHiderEl(n){
- const el=document.createElement("div");
- el.className="found-hider-marker";
- el.setAttribute("aria-label",`Found hider ${n}`);
- el.innerHTML=`<div class="found-hider-dot">🙈</div><div class="found-hider-num">${n}</div>`;
- return el;
-}
-
-function rebuildFoundHiderMarkers(){
- clearFoundHiderMarkers();
- if(!isHideSeek())return;
- const found=S.checkpoints.filter(h=>h.found);
-
- if(S.gameMap){
-   for(const h of found){
-     const m=new maplibregl.Marker({element:foundHiderEl(h.hiderId),anchor:"bottom"})
-       .setLngLat([h.lon,h.lat]).addTo(S.gameMap);
-     S.foundHiderMarkers.push(m);
-   }
- }
- if(S.fullMap){
-   for(const h of found){
-     const m=new maplibregl.Marker({element:foundHiderEl(h.hiderId),anchor:"bottom"})
-       .setLngLat([h.lon,h.lat]).addTo(S.fullMap);
-     S.fullFoundHiderMarkers.push(m);
+function refreshFoundHiderLayers(){
+ for(const map of [S.gameMap,S.fullMap]){
+   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders")){
+     map.getSource("found-hiders").setData(foundHidersGeo());
    }
  }
 }
 
 function updateHideSeekGame(){
  if(!S.currentPos||!S.checkpoints.length)return;
+ if(S.hideSeekCompleted){
+   refreshFoundHiderLayers();
+   return;
+ }
  recordHideSeekTrail();
 
  const radius=+$("unlockRadius").value;
@@ -799,7 +755,7 @@ function updateHideSeekGame(){
  }
 
  if(newlyFound.length){
-   rebuildFoundHiderMarkers();
+   refreshFoundHiderLayers();
    const found=hideSeekFoundCount();
    const remaining=S.checkpoints.length-found;
    S.score=found;
@@ -904,9 +860,55 @@ function ensureAreaLayers(map){
    map.addLayer({id:"grid-fill",type:"fill",source:"grid",paint:{"fill-color":"#f97316","fill-opacity":0.20}});
    map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
  }
+ if(!map.getSource("found-hiders")){
+   map.addSource("found-hiders",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({
+     id:"found-hider-outer",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":14,
+       "circle-color":"#ffffff",
+       "circle-stroke-width":4,
+       "circle-stroke-color":"#22c55e"
+     }
+   });
+   map.addLayer({
+     id:"found-hider-inner",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":6,
+       "circle-color":"#22c55e"
+     }
+   });
+ }
  if(!map.getSource("search-trail")){
    map.addSource("search-trail",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
    map.addLayer({id:"search-trail-line",type:"line",source:"search-trail",paint:{"line-color":"#38bdf8","line-width":5,"line-opacity":0.72}});
+ }
+ if(!map.getSource("found-hiders")){
+   map.addSource("found-hiders",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({
+     id:"found-hider-outer",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":14,
+       "circle-color":"#ffffff",
+       "circle-stroke-width":4,
+       "circle-stroke-color":"#22c55e"
+     }
+   });
+   map.addLayer({
+     id:"found-hider-inner",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":6,
+       "circle-color":"#22c55e"
+     }
+   });
  }
  if(!map.getSource("exclusions")){
    map.addSource("exclusions",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
@@ -927,6 +929,7 @@ function updateMapData(map){
  let t=S.checkpoints[S.currentIndex];
  map.getSource("grid").setData(!isHideSeek()&&S.navMode==="medium"&&t?gridGeo(t):{type:"FeatureCollection",features:[]});
  if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
+ if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
 }
 function fitBoundary(map){
  if(!map||!S.boundary.length)return;let b=box(S.boundary);
@@ -1555,6 +1558,7 @@ function ensurePersistentBoundary(map){
    !isHideSeek() && S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
  );
  if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
+ if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
  return true;
 }
 
@@ -1641,7 +1645,7 @@ function generate(){
 
  S.gameType=gameType();
  S.navMode=mode();
- clearFoundHiderMarkers();
+ S.hideSeekCompleted=false;
  resetExclusionWarning();
 
  let count=Math.max(1,Math.min(isHideSeek()?12:20,+$("checkpointCount").value||6));
@@ -1885,7 +1889,7 @@ function openFull(){
      }
      hud();
      updateCompassRoses();
-     rebuildFoundHiderMarkers();
+     refreshFoundHiderLayers();
    });
  });
 }
@@ -1962,10 +1966,13 @@ $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{
  $("gameCard").classList.add("hidden");
- clearFoundHiderMarkers();
+ S.hideSeekCompleted=false;
  S.checkpoints=[];S.trailPoints=[];S.score=0;S.currentIndex=0;
  if(S.gameMap&&S.gameMap.isStyleLoaded()&&S.gameMap.getSource("search-trail"))S.gameMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
  if(S.fullMap&&S.fullMap.isStyleLoaded()&&S.fullMap.getSource("search-trail"))S.fullMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
+ for(const map of [S.gameMap,S.fullMap]){
+   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders"))map.getSource("found-hiders").setData({type:"FeatureCollection",features:[]});
+ }
  resetExclusionWarning();
 };
 

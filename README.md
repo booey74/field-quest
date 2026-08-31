@@ -1,36 +1,49 @@
-# Field Quest v1.12.1
+# Field Quest v1.12.2
 
-Focused Hide & Seek patch built from v1.12.
+Focused Hide & Seek stability patch built from v1.12.1.
 
-## Fix 1 — consistent Hide & Seek terminology
-Expanded-map HUD now uses Hide & Seek wording rather than Challenge Hunt wording.
+## Fix 1 — completion feedback fires once
 
-During play:
-- HIDERS REMAINING
-- 5 still hiding / 1 still hiding
+Previously, after the final hider was found, every later GPS update could call the
+Hide & Seek completion routine again. This replayed the completion vibration until
+the game was ended.
 
-At completion:
-- HIDERS
-- All found
-- Hide & Seek complete
+v1.12.2 adds an explicit one-shot Hide & Seek completed state:
+- Completion UI is entered once.
+- Completion vibration plays once.
+- Later GPS updates do not replay completion feedback.
+- End Game resets the completed state for the next game.
 
-Challenge Hunt continues to use CHECKPOINT terminology.
+## Fix 2 — found hiders use map-native coordinates
 
-## Fix 2 — found-hider markers
-Once a hider is found:
-- Its actual hiding position becomes visible on the normal map.
-- The same marker appears on the expanded map.
-- The marker persists until the game ends.
-- Each found hider is numbered.
+The v1.12.1 found-hider display used HTML MapLibre markers. Field testing showed
+those markers could appear to drift relative to the boundary/exclusion polygons as
+orientation changed.
+
+v1.12.2 replaces them with a GeoJSON point source rendered as native MapLibre circle
+layers. The found-hider location is therefore drawn in the same geographic rendering
+pipeline as:
+- The main boundary.
+- Exclusion zones.
+- Search trails.
+
+Expected behaviour:
+- A found hider remains locked to its hiding latitude/longitude.
+- North Up / Travel Up / player orientation cannot move it relative to the map.
+- Found locations appear on normal and expanded maps.
 - Unfound hiders remain completely hidden.
 
 ## Retained
-All v1.12 game behaviour plus the stable v1.11.1 platform behaviour.
+- v1.12.1 Hide & Seek terminology fixes.
+- Easy / Medium / Hard search-trail behaviour.
+- Challenge Hunt.
+- v1.11.1 stable platform behaviour.
 
-## Continue testing
-Use the expanded atomic regression checklist in Trello.
-Key focused checks:
-- Hide & Seek wording is consistent in normal and expanded play/completion.
-- Found markers appear only after discovery.
-- Found markers appear in both normal and expanded maps.
-- Unfound hiders remain invisible.
+## Retest focus
+1. Find multiple hiders, change walking direction repeatedly in North Up, and confirm
+   found locations remain fixed relative to the boundary and exclusions.
+2. Repeat in Travel Up.
+3. Find the final hider and confirm the completion vibration stops automatically.
+4. Leave the completed game open through several GPS updates and confirm no vibration
+   is replayed.
+5. Continue the full atomic Trello regression checklist.
