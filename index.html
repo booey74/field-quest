@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.11.1</title>
+<title>Field Quest v1.12.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -201,17 +201,19 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   color:#fecaca;
 }
 
+
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.11.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.12.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.11.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.12.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2>1. Define the play area</h2>
@@ -316,7 +318,15 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card">
-<h2>2. Player & questions</h2>
+<h2>2. Game mode</h2>
+<div class="mode-grid game-type-grid">
+<label class="mode-card"><input type="radio" name="gameType" value="challenge" checked><span><strong>Challenge Hunt</strong><small>Find checkpoints, then answer age-appropriate questions.</small></span></label>
+<label class="mode-card"><input type="radio" name="gameType" value="hideSeek"><span><strong>Hide &amp; Seek</strong><small>Find virtual hiders hidden around the play area. No target clues.</small></span></label>
+</div>
+</section>
+
+<section class="card" id="questionSetupCard">
+<h2>3. Player & questions</h2>
 <label>Player age<input id="playerAge" type="number" min="5" max="16" value="9"></label>
 <div class="category-grid">
 <label class="check-card"><input type="checkbox" name="category" value="maths" checked> Maths</label>
@@ -328,17 +338,17 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card">
-<h2>3. Navigation difficulty</h2>
+<h2>4. Difficulty</h2>
 <div class="mode-grid">
-<label class="mode-card"><input type="radio" name="navMode" value="easy" checked><span><strong>Easy</strong><small>Exact checkpoint pin, child marker and distance.</small></span></label>
-<label class="mode-card"><input type="radio" name="navMode" value="medium"><span><strong>Medium</strong><small>Highlighted grid area, exact checkpoint hidden.</small></span></label>
-<label class="mode-card"><input type="radio" name="navMode" value="hard"><span><strong>Hard</strong><small>No map. Compass direction and distance.</small></span></label>
+<label class="mode-card"><input type="radio" name="navMode" value="easy" checked><span><strong>Easy</strong><small id="easyModeText">Exact checkpoint pin, child marker and distance.</small></span></label>
+<label class="mode-card"><input type="radio" name="navMode" value="medium"><span><strong>Medium</strong><small id="mediumModeText">Highlighted grid area, exact checkpoint hidden.</small></span></label>
+<label class="mode-card"><input type="radio" name="navMode" value="hard"><span><strong>Hard</strong><small id="hardModeText">No map. Compass direction and distance.</small></span></label>
 </div>
 </section>
 
 <section class="card">
-<h2>4. Game settings</h2>
-<label>Checkpoints<input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
+<h2>5. Game settings</h2>
+<label><span id="countLabel">Checkpoints</span><input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
 <div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
 <div class="game-start-gps-row">
@@ -391,7 +401,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 <div id="fullscreenMapModal" class="modal hidden">
   <div id="fullMap"></div>
   <div class="compass-mini"><div class="heading-marker"></div><div id="fullCompassRose" class="compass-rose-mini"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div></div>
-  <div class="hud top-hud"><div><span class="hud-label">CHECKPOINT</span><strong id="hudCheckpoint">1 of 6</strong></div><button id="closeMapBtn" class="ghost">Collapse</button></div>
+  <div class="hud top-hud"><div><span class="hud-label" id="hudTopLabel">CHECKPOINT</span><strong id="hudCheckpoint">1 of 6</strong></div><button id="closeMapBtn" class="ghost">Collapse</button></div>
 <div id="fullExclusionSafetyAlert" class="full-safety-alert hidden" role="alert" aria-live="assertive">
   <strong id="fullExclusionSafetyTitle">CAUTION</strong>
   <span id="fullExclusionSafetyText">Exclusion zone nearby. Keep clear of the marked area.</span>
@@ -409,7 +419,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0
+ gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,hideSeekCompleted:false
 };
 
 const Q=[
@@ -449,6 +459,31 @@ const Q=[
 const $=id=>document.getElementById(id),rad=v=>v*Math.PI/180,deg=v=>v*180/Math.PI;
 const cats=()=>[...document.querySelectorAll('input[name="category"]:checked')].map(x=>x.value);
 const mode=()=>document.querySelector('input[name="navMode"]:checked').value;
+
+const gameType=()=>document.querySelector('input[name="gameType"]:checked').value;
+const isHideSeek=()=>S.gameType==="hideSeek";
+
+function refreshGameTypeUi(){
+ S.gameType=gameType();
+ const hide=isHideSeek();
+ $("questionSetupCard").classList.toggle("hidden",hide);
+ $("countLabel").textContent=hide?"Hiders":"Checkpoints";
+ $("generateBtn").textContent=hide?"Start Hide & Seek":"Generate game";
+
+ if(hide){
+   $("easyModeText").textContent="Full search trail shows everywhere you have already explored.";
+   $("mediumModeText").textContent="Only your recent search trail is shown.";
+   $("hardModeText").textContent="No search trail — remember where you have already looked.";
+   $("checkpointCount").max="12";
+   if(+$("checkpointCount").value>12)$("checkpointCount").value=6;
+ }else{
+   $("easyModeText").textContent="Exact checkpoint pin, child marker and distance.";
+   $("mediumModeText").textContent="Highlighted grid area, exact checkpoint hidden.";
+   $("hardModeText").textContent="No map. Compass direction and distance.";
+   $("checkpointCount").max="20";
+ }
+}
+
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function dist(a,b){const R=6371000,dla=rad(b.lat-a.lat),dlo=rad(b.lon-a.lon),l1=rad(a.lat),l2=rad(b.lat),h=Math.sin(dla/2)**2+Math.cos(l1)*Math.cos(l2)*Math.sin(dlo/2)**2;return 2*R*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
 function bear(a,b){let l1=rad(a.lat),l2=rad(b.lat),dl=rad(b.lon-a.lon),y=Math.sin(dl)*Math.cos(l2),x=Math.cos(l1)*Math.sin(l2)-Math.sin(l1)*Math.cos(l2)*Math.cos(dl);return(deg(Math.atan2(y,x))+360)%360}
@@ -603,6 +638,147 @@ function pickFirstCheckpointFarEnough(points){
 }
 
 function spread(poly,count){let d=diag(poly),sep=Math.max(10,Math.min(45,d/(Math.sqrt(count)*2))),edge=Math.max(4,Math.min(12,d*.035)),exBuffer=5;for(let round=0;round<8;round++){let out=[];for(let i=0;i<10000&&out.length<count;i++){let p=randomPoint(poly);if(edgeDist(p,poly)<edge)continue;if(exclusionEdgeDist(p)<exBuffer)continue;if(out.every(o=>dist(p,o)>=sep))out.push(p)}if(out.length===count)return shuffle(out);sep*=.85;edge*=.9;exBuffer*=.9}let out=[];let guard=0;while(out.length<count&&guard++<10000){let p=randomPoint(poly);if(exclusionEdgeDist(p)>=2)out.push(p)}if(out.length<count)throw Error("Not enough safe playable space for that many checkpoints.");return shuffle(out)}
+
+function spreadHideSeek(poly,count){
+ const wanted=Math.max(1,Math.min(12,count));
+ const startMin=Math.max(8,Math.min(20,diag(poly)*0.10));
+ let best=null,bestMin=-1;
+
+ for(let attempt=0;attempt<8;attempt++){
+   const pts=spread(poly,wanted);
+   const minFromStart=S.currentPos?Math.min(...pts.map(p=>dist(S.currentPos,p))):Infinity;
+   if(minFromStart>bestMin){best=pts;bestMin=minFromStart}
+   if(minFromStart>=startMin)return pts;
+ }
+ return best||spread(poly,wanted);
+}
+
+function trailGeo(){
+ if(!isHideSeek()||S.navMode==="hard"||S.trailPoints.length<2)
+   return {type:"FeatureCollection",features:[]};
+
+ const pts=S.navMode==="medium"?S.trailPoints.slice(-25):S.trailPoints;
+ return {
+   type:"FeatureCollection",
+   features:[{
+     type:"Feature",
+     geometry:{type:"LineString",coordinates:pts.map(p=>[p.lon,p.lat])},
+     properties:{}
+   }]
+ };
+}
+
+function recordHideSeekTrail(){
+ if(!isHideSeek()||!S.currentPos||S.navMode==="hard")return;
+ const now=Date.now();
+ const prev=S.trailPoints[S.trailPoints.length-1];
+ if(prev && dist(prev,S.currentPos)<1.5 && now-S.lastTrailPointAt<5000)return;
+ S.trailPoints.push({lat:S.currentPos.lat,lon:S.currentPos.lon});
+ if(S.trailPoints.length>600)S.trailPoints.shift();
+ S.lastTrailPointAt=now;
+ if(S.gameMap&&S.gameMap.isStyleLoaded()&&S.gameMap.getSource("search-trail"))
+   S.gameMap.getSource("search-trail").setData(trailGeo());
+ if(S.fullMap&&S.fullMap.isStyleLoaded()&&S.fullMap.getSource("search-trail"))
+   S.fullMap.getSource("search-trail").setData(trailGeo());
+}
+
+function hideSeekFoundCount(){
+ return S.checkpoints.filter(p=>p.found).length;
+}
+
+function showHideSeekNotice(text){
+ $("zoneText").textContent=text;
+ $("zoneText").classList.remove("hidden");
+ clearTimeout(S.hideSeekNoticeTimer);
+ S.hideSeekNoticeTimer=setTimeout(()=>{
+   if(isHideSeek())$("zoneText").classList.add("hidden");
+ },2200);
+}
+
+function completeHideSeek(){
+ if(S.hideSeekCompleted)return;
+ S.hideSeekCompleted=true;
+ $("challengePanel").classList.add("hidden");
+ $("hardNavPanel").classList.add("hidden");
+ $("checkpointEyebrow").textContent="ALL FOUND";
+ $("checkpointLabel").textContent="Hide & Seek complete";
+ $("scoreText").textContent=`${S.checkpoints.length} / ${S.checkpoints.length}`;
+ $("distanceText").textContent="🏁";
+ $("bearingText").textContent="You found every hider!";
+ $("progressBar").style.width="100%";
+ $("hudTopLabel").textContent="HIDERS";
+ $("hudCheckpoint").textContent="All found";
+ $("hudDistance").textContent="—";
+ $("hudHint").textContent="Hide & Seek complete";
+ showHideSeekNotice("🎉 ALL HIDERS FOUND!");
+ if(navigator.vibrate)try{navigator.vibrate([180,80,180,80,320])}catch(e){}
+}
+
+
+function foundHidersGeo(){
+ if(!isHideSeek())return {type:"FeatureCollection",features:[]};
+ return {
+   type:"FeatureCollection",
+   features:S.checkpoints
+     .filter(h=>h.found)
+     .map(h=>({
+       type:"Feature",
+       geometry:{type:"Point",coordinates:[h.lon,h.lat]},
+       properties:{hiderId:h.hiderId}
+     }))
+ };
+}
+
+function refreshFoundHiderLayers(){
+ for(const map of [S.gameMap,S.fullMap]){
+   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders")){
+     map.getSource("found-hiders").setData(foundHidersGeo());
+   }
+ }
+}
+
+function updateHideSeekGame(){
+ if(!S.currentPos||!S.checkpoints.length)return;
+ if(S.hideSeekCompleted){
+   refreshFoundHiderLayers();
+   return;
+ }
+ recordHideSeekTrail();
+
+ const radius=+$("unlockRadius").value;
+ const newlyFound=[];
+ for(const h of S.checkpoints){
+   if(!h.found && dist(S.currentPos,h)<=radius){
+     h.found=true;
+     newlyFound.push(h);
+   }
+ }
+
+ if(newlyFound.length){
+   refreshFoundHiderLayers();
+   const found=hideSeekFoundCount();
+   const remaining=S.checkpoints.length-found;
+   S.score=found;
+   showHideSeekNotice(remaining?`🙈 HIDER FOUND! ${remaining} still hiding`:"🎉 LAST HIDER FOUND!");
+   if(navigator.vibrate)try{navigator.vibrate([160,80,220])}catch(e){}
+ }
+
+ const found=hideSeekFoundCount();
+ const remaining=S.checkpoints.length-found;
+ $("checkpointEyebrow").textContent=remaining?"HIDERS REMAINING":"ALL FOUND";
+ $("checkpointLabel").textContent=remaining===1?"1 still hiding":`${remaining} still hiding`;
+ $("scoreText").textContent=`${found} / ${S.checkpoints.length} found`;
+ $("distanceText").textContent="🔎";
+ $("bearingText").textContent="Search the whole play area — no target clues.";
+ $("progressBar").style.width=`${S.checkpoints.length?found/S.checkpoints.length*100:0}%`;
+ hud();
+
+ if(S.gameMap&&S.gameMap.isStyleLoaded())updateMapData(S.gameMap);
+ if(S.fullMap&&S.fullMap.isStyleLoaded())updateMapData(S.fullMap);
+
+ if(remaining===0)completeHideSeek();
+}
+
 function pool(age,cs){let exact=Q.filter(q=>q.age===age&&cs.includes(q.c));if(exact.length)return shuffle(exact);return shuffle(Q.filter(q=>Math.abs(q.age-age)===1&&cs.includes(q.c)))}
 function richerStyle(){
  return {
@@ -684,6 +860,56 @@ function ensureAreaLayers(map){
    map.addLayer({id:"grid-fill",type:"fill",source:"grid",paint:{"fill-color":"#f97316","fill-opacity":0.20}});
    map.addLayer({id:"grid-line",type:"line",source:"grid",paint:{"line-color":"#f97316","line-width":2}});
  }
+ if(!map.getSource("found-hiders")){
+   map.addSource("found-hiders",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({
+     id:"found-hider-outer",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":14,
+       "circle-color":"#ffffff",
+       "circle-stroke-width":4,
+       "circle-stroke-color":"#22c55e"
+     }
+   });
+   map.addLayer({
+     id:"found-hider-inner",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":6,
+       "circle-color":"#22c55e"
+     }
+   });
+ }
+ if(!map.getSource("search-trail")){
+   map.addSource("search-trail",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({id:"search-trail-line",type:"line",source:"search-trail",paint:{"line-color":"#38bdf8","line-width":5,"line-opacity":0.72}});
+ }
+ if(!map.getSource("found-hiders")){
+   map.addSource("found-hiders",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   map.addLayer({
+     id:"found-hider-outer",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":14,
+       "circle-color":"#ffffff",
+       "circle-stroke-width":4,
+       "circle-stroke-color":"#22c55e"
+     }
+   });
+   map.addLayer({
+     id:"found-hider-inner",
+     type:"circle",
+     source:"found-hiders",
+     paint:{
+       "circle-radius":6,
+       "circle-color":"#22c55e"
+     }
+   });
+ }
  if(!map.getSource("exclusions")){
    map.addSource("exclusions",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
    map.addLayer({id:"exclusion-fill",type:"fill",source:"exclusions",paint:{"fill-color":"#ef4444","fill-opacity":0.24}});
@@ -701,7 +927,9 @@ function updateMapData(map){
  map.getSource("exclusions").setData(exclusionsGeo());
  map.getSource("exclusion-draft").setData(exclusionDraftGeo());
  let t=S.checkpoints[S.currentIndex];
- map.getSource("grid").setData(S.navMode==="medium"&&t?gridGeo(t):{type:"FeatureCollection",features:[]});
+ map.getSource("grid").setData(!isHideSeek()&&S.navMode==="medium"&&t?gridGeo(t):{type:"FeatureCollection",features:[]});
+ if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
+ if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
 }
 function fitBoundary(map){
  if(!map||!S.boundary.length)return;let b=box(S.boundary);
@@ -1298,7 +1526,7 @@ function ensurePermanentTargetMarker(map,prefix){
  const key=prefix==="game"?"gameTargetMarker":"fullTargetMarker";
  const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
 
- if(!target || S.navMode!=="easy"){
+ if(!target || isHideSeek() || S.navMode!=="easy"){
    if(S[key]) S[key].getElement().style.display="none";
    updateDiagnostics();
    return;
@@ -1327,8 +1555,10 @@ function ensurePersistentBoundary(map){
  if(map.getSource("exclusion-draft"))map.getSource("exclusion-draft").setData({type:"FeatureCollection",features:[]});
  const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
  map.getSource("grid").setData(
-   S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
+   !isHideSeek() && S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
  );
+ if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
+ if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
  return true;
 }
 
@@ -1412,25 +1642,70 @@ function generate(){
    $("gpsBadge").textContent="GPS required";
    return;
  }
- let count=Math.max(1,Math.min(20,+$("checkpointCount").value||6)),age=+$("playerAge").value||9,cs=cats();
- if(!cs.length)return alert("Choose at least one category.");
- let p=pool(age,cs);if(!p.length)return alert("No suitable questions yet.");
- count=Math.min(count,p.length);
- try{
-   const pts=pickFirstCheckpointFarEnough(spread(S.boundary,count));
-   S.checkpoints=pts.map((x,i)=>({...x,challenge:p[i]}));
+
+ S.gameType=gameType();
+ S.navMode=mode();
+ S.hideSeekCompleted=false;
+ resetExclusionWarning();
+
+ let count=Math.max(1,Math.min(isHideSeek()?12:20,+$("checkpointCount").value||6));
+
+ if(isHideSeek()){
+   try{
+     const pts=spreadHideSeek(S.boundary,count);
+     S.checkpoints=pts.map((p,i)=>({...p,hiderId:i+1,found:false}));
+   }catch(e){
+     alert(e.message||"Could not hide the players safely. Try fewer hiders or smaller exclusion zones.");
+     return;
+   }
+
+   S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;
+   S.trailPoints=[];S.lastTrailPointAt=0;
+   recordHideSeekTrail();
+
+   $("checkpointEyebrow").textContent="HIDERS REMAINING";
+   $("checkpointLabel").textContent=count===1?"1 still hiding":`${count} still hiding`;
+   $("scoreText").textContent=`0 / ${count} found`;
+   $("zoneText").textContent="";$("zoneText").classList.add("hidden");
+   $("bearingText").textContent="Search the whole play area — no target clues.";
+   $("distanceText").textContent="🔎";
+   $("progressBar").style.width="0%";
+   $("challengePanel").classList.add("hidden");
+   $("hardNavPanel").classList.add("hidden");
+   $("gameMapWrap").classList.remove("hidden");
+ }else{
+   let age=+$("playerAge").value||9,cs=cats();
+   if(!cs.length)return alert("Choose at least one category.");
+   let p=pool(age,cs);if(!p.length)return alert("No suitable questions yet.");
+   count=Math.min(count,p.length);
+
+   try{
+     const pts=pickFirstCheckpointFarEnough(spread(S.boundary,count));
+     S.checkpoints=pts.map((x,i)=>({...x,challenge:p[i]}));
+   }catch(e){
+     alert(e.message||"Could not place checkpoints safely. Try fewer checkpoints or smaller exclusion zones.");
+     return;
+   }
+
+   S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;
+   S.trailPoints=[];S.lastTrailPointAt=0;
+
+   $("checkpointEyebrow").textContent="NEXT CHECKPOINT";
+   $("checkpointLabel").textContent="Checkpoint 1";
+   $("scoreText").textContent=`0 / ${S.checkpoints.length}`;
+   $("zoneText").textContent="";$("zoneText").classList.add("hidden");
+   $("bearingText").textContent="Waiting for GPS…";
+   $("distanceText").textContent="—";
+   $("progressBar").style.width="0%";
+   $("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");
+   $("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
  }
- catch(e){alert(e.message||"Could not place checkpoints safely. Try fewer checkpoints or smaller exclusion zones.");return}
- S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;S.navMode=mode();resetExclusionWarning();
- $("checkpointEyebrow").textContent="NEXT CHECKPOINT";
- $("checkpointLabel").textContent="Checkpoint 1";
- $("scoreText").textContent=`0 / ${S.checkpoints.length}`;
- $("zoneText").textContent="";$("zoneText").classList.add("hidden");
- $("bearingText").textContent="Waiting for GPS…";$("distanceText").textContent="—";$("progressBar").style.width="0%";
- $("gameCard").classList.remove("hidden");$("hardNavPanel").classList.toggle("hidden",S.navMode!=="hard");$("gameMapWrap").classList.toggle("hidden",S.navMode==="hard");
- if(!S.gameMap)S.gameMap=createGameMap("gameMap");else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
- // The game card has just changed from hidden to visible. Force MapLibre to recalculate
- // the normal map size after layout settles, including when the player is outside the boundary.
+
+ $("gameCard").classList.remove("hidden");
+
+ if(!S.gameMap)S.gameMap=createGameMap("gameMap");
+ else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
+
  const refreshNormalGameMap=()=>{
    if(!S.gameMap)return;
    try{S.gameMap.resize()}catch(e){}
@@ -1440,11 +1715,19 @@ function generate(){
  requestAnimationFrame(()=>refreshNormalGameMap());
  setTimeout(()=>refreshNormalGameMap(),100);
  setTimeout(()=>refreshNormalGameMap(),300);
- updatePlayers();updateGameUI();updateGame();updateExclusionSafetyWarning();updateDiagnostics();applyTravelBearing();setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
+
+ updatePlayers();
+ updateGameUI();
+ updateGame();
+ updateExclusionSafetyWarning();
+ updateDiagnostics();
+ applyTravelBearing();
+ setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
 }
+
 function updateHardCompass(){
  const panel=$("hardNavPanel");
- if(S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length){
+ if(isHideSeek()||S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length){
    if(panel&&S.navMode==="hard"&&S.currentIndex>=S.checkpoints.length)panel.classList.add("hidden");
    return;
  }
@@ -1465,13 +1748,24 @@ function updateHardCompass(){
  $("hardCompassLabel").textContent=S.hasReliableHeading?`Head ${comp(targetBearing)}`:`Head ${comp(targetBearing)} • getting direction…`;
 }
 function updateGameUI(){refreshTravelUpAvailability();
- let n=S.checkpoints.length;$("checkpointEyebrow").textContent="NEXT CHECKPOINT";$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("zoneText").textContent="";$("zoneText").classList.add("hidden");$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
+ let n=S.checkpoints.length;
+ if(isHideSeek()){
+   let found=hideSeekFoundCount(),remaining=n-found;
+   $("checkpointEyebrow").textContent=remaining?"HIDERS REMAINING":"ALL FOUND";
+   $("checkpointLabel").textContent=remaining===1?"1 still hiding":`${remaining} still hiding`;
+   $("scoreText").textContent=`${found} / ${n} found`;
+   $("challengePanel").classList.add("hidden");
+   $("answerOptions").innerHTML="";$("feedback").textContent="";
+ }else{
+   $("checkpointEyebrow").textContent="NEXT CHECKPOINT";$("checkpointLabel").textContent=`Checkpoint ${S.currentIndex+1}`;$("scoreText").textContent=`${S.score} / ${n}`;$("zoneText").textContent="";$("zoneText").classList.add("hidden");$("challengePanel").classList.add("hidden");$("answerOptions").innerHTML="";$("feedback").textContent="";
+ }
  if(S.gameMap)syncMapState(S.gameMap,"game");
  if(S.fullMap)syncMapState(S.fullMap,"full");
  updateHardCompass();hud();
 }
 
 function enterCompletedGameState(){
+  if(isHideSeek()){completeHideSeek();return}
   // Remove all active target markers.
   for(const key of ["gameTargetMarker","fullTargetMarker","gameTarget","fullTarget"]){
     if(S[key]){
@@ -1516,7 +1810,9 @@ function enterCompletedGameState(){
 }
 
 function updateGame(){
- if(!S.currentPos||!S.checkpoints.length||S.currentIndex>=S.checkpoints.length)return;
+ if(!S.currentPos||!S.checkpoints.length)return;
+ if(isHideSeek()){updateHideSeekGame();return}
+ if(S.currentIndex>=S.checkpoints.length)return;
  let t=S.checkpoints[S.currentIndex],d=dist(S.currentPos,t),r=+$("unlockRadius").value;
  if(S.firstDistance==null||d>S.firstDistance)S.firstDistance=d;
  $("distanceText").textContent=Math.round(d)+" m";$("progressBar").style.width=Math.max(0,Math.min(100,100-d/S.firstDistance*100))+"%";
@@ -1526,7 +1822,22 @@ function updateGame(){
  if(S.navMode==="medium"){let g=gridBounds(t),inCell=S.currentPos.lat>=g.south&&S.currentPos.lat<=g.north&&S.currentPos.lon>=g.west&&S.currentPos.lon<=g.east;$("zoneText").classList.toggle("hidden",!inCell);$("zoneText").textContent="YOU'RE IN THE TARGET AREA — use the distance to find the checkpoint"}
  S.lastDistance=d;hud(d);updateHardCompass();if(d<=r&&!S.unlocked)unlock();
 }
-function hud(d=S.lastDistance){$("hudCheckpoint").textContent=`${S.currentIndex+1} of ${S.checkpoints.length}`;$("hudDistance").textContent=d==null?"—":Math.round(d)+" m";$("hudHint").textContent=S.navMode==="easy"?"Follow the checkpoint pin":"Checkpoint is somewhere in the highlighted area"}
+function hud(d=S.lastDistance){
+ if(isHideSeek()){
+   const found=hideSeekFoundCount(),total=S.checkpoints.length,remaining=total-found;
+   $("hudTopLabel").textContent=remaining?"HIDERS REMAINING":"HIDERS";
+   $("hudCheckpoint").textContent=remaining?(remaining===1?"1 still hiding":`${remaining} still hiding`):"All found";
+   $("hudDistance").textContent="—";
+   $("hudHint").textContent=remaining
+     ?(S.navMode==="easy"?"Full search trail":S.navMode==="medium"?"Recent search trail":"No trail — remember where you've searched")
+     :"Hide & Seek complete";
+   return;
+ }
+ $("hudTopLabel").textContent="CHECKPOINT";
+ $("hudCheckpoint").textContent=`${S.currentIndex+1} of ${S.checkpoints.length}`;
+ $("hudDistance").textContent=d==null?"—":Math.round(d)+" m";
+ $("hudHint").textContent=S.navMode==="easy"?"Follow the checkpoint pin":"Checkpoint is somewhere in the highlighted area"
+}
 function label(c){return{maths:"Maths",science:"Science",geography:"Geography",general:"General knowledge",logic:"Logic & puzzles"}[c]}
 function unlock(){
  S.unlocked=true;if(!$("fullscreenMapModal").classList.contains("hidden"))closeFull();
@@ -1560,7 +1871,7 @@ function refreshFullMapState(){
  setTimeout(()=>{S.fullMap.resize();redraw()},180);
 }
 function openFull(){
- if(S.navMode==="hard")return;
+ if(!isHideSeek()&&S.navMode==="hard")return;
  $("fullscreenMapModal").classList.remove("hidden");
  requestAnimationFrame(()=>{
    requestAnimationFrame(()=>{
@@ -1578,6 +1889,7 @@ function openFull(){
      }
      hud();
      updateCompassRoses();
+     refreshFoundHiderLayers();
    });
  });
 }
@@ -1644,6 +1956,7 @@ $("expandedUndoWalkPointBtn").onclick=undoWalkBoundaryPoint;
 $("expandedConfirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
 $("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;
+document.querySelectorAll('input[name="gameType"]').forEach(el=>el.onchange=refreshGameTypeUi);
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;
@@ -1651,9 +1964,19 @@ $("recenterGameBtn").onclick=()=>enableFollow(S.gameMap);
 $("recenterFullBtn").onclick=()=>enableFollow(S.fullMap);
 $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
-$("endGameBtn").onclick=()=>{$("gameCard").classList.add("hidden");S.checkpoints=[];resetExclusionWarning()};
+$("endGameBtn").onclick=()=>{
+ $("gameCard").classList.add("hidden");
+ S.hideSeekCompleted=false;
+ S.checkpoints=[];S.trailPoints=[];S.score=0;S.currentIndex=0;
+ if(S.gameMap&&S.gameMap.isStyleLoaded()&&S.gameMap.getSource("search-trail"))S.gameMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
+ if(S.fullMap&&S.fullMap.isStyleLoaded()&&S.fullMap.getSource("search-trail"))S.fullMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
+ for(const map of [S.gameMap,S.fullMap]){
+   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders"))map.getSource("found-hiders").setData({type:"FeatureCollection",features:[]});
+ }
+ resetExclusionWarning();
+};
 
-ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();
+ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();refreshGameTypeUi();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
