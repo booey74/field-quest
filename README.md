@@ -1,49 +1,40 @@
-# Field Quest v1.12.2
+# Field Quest v1.13.1
 
-Focused Hide & Seek stability patch built from v1.12.1.
+UX and safety polish release built from stable v1.12.2.
 
-## Fix 1 — completion feedback fires once
+## Main boundary warning
+Main-boundary warning behaviour has been simplified before field testing.
 
-Previously, after the final hider was found, every later GPS update could call the
-Hide & Seek completion routine again. This replayed the completion vibration until
-the game was ended.
+During active gameplay:
+- No warning is shown while the player remains inside the defined play area.
+- OUTSIDE appears only after GPS indicates the player has crossed beyond the main boundary.
+- A 2 m inside-clear margin prevents the warning rapidly flashing on/off because of normal GPS drift near the edge.
+- OUTSIDE uses a finite vibration pattern on entry.
+- Exclusion-zone warnings always take priority if both warning conditions apply.
+- The same warning state appears in normal and expanded gameplay views.
 
-v1.12.2 adds an explicit one-shot Hide & Seek completed state:
-- Completion UI is entered once.
-- Completion vibration plays once.
-- Later GPS updates do not replay completion feedback.
-- End Game resets the completed state for the next game.
+This is intentionally different from exclusion-zone behaviour:
+- Exclusion zones retain CAUTION before entry and DANGER inside.
+- The main boundary only warns after the player has actually left the playable area.
 
-## Fix 2 — found hiders use map-native coordinates
+These warnings are advisory only. Phone GPS can drift and Field Quest is not a
+safety-critical navigation system.
 
-The v1.12.1 found-hider display used HTML MapLibre markers. Field testing showed
-those markers could appear to drift relative to the boundary/exclusion polygons as
-orientation changed.
+## Medium search-area clarification
+Challenge Hunt Medium keeps the existing search-area geometry and uncertainty.
 
-v1.12.2 replaces them with a GeoJSON point source rendered as native MapLibre circle
-layers. The found-hider location is therefore drawn in the same geographic rendering
-pipeline as:
-- The main boundary.
-- Exclusion zones.
-- Search trails.
+When the search rectangle extends into invalid space:
+- Space outside the main boundary is visually muted grey.
+- Exclusion-zone space is visually reinforced as invalid red.
+- The search rectangle itself is not shrunk or moved around the true checkpoint.
+- The exact checkpoint remains hidden.
+- The treatment is shared by normal and expanded maps.
 
-Expected behaviour:
-- A found hider remains locked to its hiding latitude/longitude.
-- North Up / Travel Up / player orientation cannot move it relative to the map.
-- Found locations appear on normal and expanded maps.
-- Unfound hiders remain completely hidden.
-
-## Retained
-- v1.12.1 Hide & Seek terminology fixes.
-- Easy / Medium / Hard search-trail behaviour.
-- Challenge Hunt.
-- v1.11.1 stable platform behaviour.
-
-## Retest focus
-1. Find multiple hiders, change walking direction repeatedly in North Up, and confirm
-   found locations remain fixed relative to the boundary and exclusions.
-2. Repeat in Travel Up.
-3. Find the final hider and confirm the completion vibration stops automatically.
-4. Leave the completed game open through several GPS updates and confirm no vibration
-   is replayed.
-5. Continue the full atomic Trello regression checklist.
+## Retained from v1.12.2
+- Challenge Hunt Easy / Medium / Hard.
+- Hide & Seek Easy / Medium / Hard.
+- Saved boundaries and exclusion zones.
+- Exclusion-zone CAUTION/DANGER warnings.
+- North Up / Travel Up.
+- Player follow, Re-centre and expanded maps.
+- Found-hider geographic markers and one-shot completion.
