@@ -1,56 +1,36 @@
-# Field Quest v1.12
+# Field Quest v1.12.1
 
-Release candidate built from the proven v1.11.1 stable baseline.
+Focused Hide & Seek patch built from v1.12.
 
-## New game mode: Hide & Seek
+## Fix 1 — consistent Hide & Seek terminology
+Expanded-map HUD now uses Hide & Seek wording rather than Challenge Hunt wording.
 
-Field Quest now offers two game modes:
+During play:
+- HIDERS REMAINING
+- 5 still hiding / 1 still hiding
 
-### Challenge Hunt
-The existing checkpoint-and-question game remains unchanged.
+At completion:
+- HIDERS
+- All found
+- Hide & Seek complete
 
-### Hide & Seek
-Virtual hiders are placed around the confirmed play area.
+Challenge Hunt continues to use CHECKPOINT terminology.
 
-Core behaviour:
-- Parent chooses the number of hiders.
-- Hiders are randomly distributed inside the main boundary.
-- Exclusion zones remain unavailable for hider placement.
-- Hiders are spread rather than intentionally clustered.
-- The app tries to avoid placing a hider immediately beside the player's starting position.
-- All hiders are active at once and can be found in any order.
-- No target pin, target distance, bearing, grid area or direct clue is shown.
-- A hider is found automatically when the player enters the chosen unlock radius.
-- The game ends when every hider has been found.
+## Fix 2 — found-hider markers
+Once a hider is found:
+- Its actual hiding position becomes visible on the normal map.
+- The same marker appears on the expanded map.
+- The marker persists until the game ends.
+- Each found hider is numbered.
+- Unfound hiders remain completely hidden.
 
-## Difficulty
+## Retained
+All v1.12 game behaviour plus the stable v1.11.1 platform behaviour.
 
-Easy:
-- Full search trail remains visible, showing everywhere the player has explored.
-
-Medium:
-- Only the recent search trail is shown.
-
-Hard:
-- No search trail is shown.
-- The boundary, player position and exclusion zones remain visible.
-
-## Shared platform behaviour
-
-Hide & Seek reuses:
-- Confirmed/saved main boundaries.
-- Exclusion zones.
-- Live GPS/player marker.
-- North Up / Travel Up.
-- Re-centre and expanded map.
-- v1.10.2 exclusion-zone CAUTION/DANGER warnings.
-- v1.11.1 startup-location and Walk Boundary Undo improvements.
-
-## Test priorities
-
-- Challenge Hunt must remain unchanged.
-- Hiders must never be knowingly placed inside exclusion zones.
-- No unrevealed hider location may appear on the map or navigation UI.
-- Easy/Medium/Hard trail behaviour must remain distinct.
-- Hiders must be discoverable in any order.
-- Game completion must occur only after all hiders are found.
+## Continue testing
+Use the expanded atomic regression checklist in Trello.
+Key focused checks:
+- Hide & Seek wording is consistent in normal and expanded play/completion.
+- Found markers appear only after discovery.
+- Found markers appear in both normal and expanded maps.
+- Unfound hiders remain invisible.
