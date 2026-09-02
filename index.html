@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.13.1</title>
+<title>Field Quest v1.13.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -216,14 +216,14 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.13.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.13.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.13.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.13.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
-<h2>1. Define the play area</h2>
+<h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
 <div class="boundary-mode-row">
   <button id="walkBoundaryBtn" class="ghost active">Walk boundary</button>
   <button id="drawBoundaryBtn" class="ghost">Draw boundary</button>
@@ -325,7 +325,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card">
-<h2>2. Game mode</h2>
+<h2><span id="stepGameModeNum">2.</span> Game mode</h2>
 <div class="mode-grid game-type-grid">
 <label class="mode-card"><input type="radio" name="gameType" value="challenge" checked><span><strong>Challenge Hunt</strong><small>Find checkpoints, then answer age-appropriate questions.</small></span></label>
 <label class="mode-card"><input type="radio" name="gameType" value="hideSeek"><span><strong>Hide &amp; Seek</strong><small>Find virtual hiders hidden around the play area. No target clues.</small></span></label>
@@ -333,7 +333,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card" id="questionSetupCard">
-<h2>3. Player & questions</h2>
+<h2><span id="stepPlayerQuestionsNum">3.</span> Player & questions</h2>
 <label>Player age<input id="playerAge" type="number" min="5" max="16" value="9"></label>
 <div class="category-grid">
 <label class="check-card"><input type="checkbox" name="category" value="maths" checked> Maths</label>
@@ -345,7 +345,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card">
-<h2>4. Difficulty</h2>
+<h2><span id="stepDifficultyNum">4.</span> Difficulty</h2>
 <div class="mode-grid">
 <label class="mode-card"><input type="radio" name="navMode" value="easy" checked><span><strong>Easy</strong><small id="easyModeText">Exact checkpoint pin, child marker and distance.</small></span></label>
 <label class="mode-card"><input type="radio" name="navMode" value="medium"><span><strong>Medium</strong><small id="mediumModeText">Highlighted grid area, exact checkpoint hidden.</small></span></label>
@@ -354,7 +354,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 </section>
 
 <section class="card">
-<h2>5. Game settings</h2>
+<h2><span id="stepSettingsNum">5.</span> Game settings</h2>
 <label><span id="countLabel">Checkpoints</span><input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
 <div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
@@ -478,9 +478,20 @@ const mode=()=>document.querySelector('input[name="navMode"]:checked').value;
 const gameType=()=>document.querySelector('input[name="gameType"]:checked').value;
 const isHideSeek=()=>S.gameType==="hideSeek";
 
+
+function refreshSetupStepNumbers(){
+ const hide=isHideSeek();
+ if($("stepBoundaryNum"))$("stepBoundaryNum").textContent="1.";
+ if($("stepGameModeNum"))$("stepGameModeNum").textContent="2.";
+ if($("stepPlayerQuestionsNum"))$("stepPlayerQuestionsNum").textContent="3.";
+ if($("stepDifficultyNum"))$("stepDifficultyNum").textContent=hide?"3.":"4.";
+ if($("stepSettingsNum"))$("stepSettingsNum").textContent=hide?"4.":"5.";
+}
+
 function refreshGameTypeUi(){
  S.gameType=gameType();
  const hide=isHideSeek();
+ refreshSetupStepNumbers();
  $("questionSetupCard").classList.toggle("hidden",hide);
  $("countLabel").textContent=hide?"Hiders":"Checkpoints";
  $("generateBtn").textContent=hide?"Start Hide & Seek":"Generate game";
@@ -929,20 +940,52 @@ function gridGeo(t){let g=gridBounds(t),c=[[g.west,g.south],[g.east,g.south],[g.
 
 function emptyGeo(){return{type:"FeatureCollection",features:[]}}
 
+function clipPolyToRect(points,rect){
+ let poly=points.map(p=>({lon:p.lon,lat:p.lat}));
+ const edges=[
+   {inside:p=>p.lon>=rect.west, intersect:(a,b)=>{
+     const t=(rect.west-a.lon)/(b.lon-a.lon);return{lon:rect.west,lat:a.lat+t*(b.lat-a.lat)};}},
+   {inside:p=>p.lon<=rect.east, intersect:(a,b)=>{
+     const t=(rect.east-a.lon)/(b.lon-a.lon);return{lon:rect.east,lat:a.lat+t*(b.lat-a.lat)};}},
+   {inside:p=>p.lat>=rect.south, intersect:(a,b)=>{
+     const t=(rect.south-a.lat)/(b.lat-a.lat);return{lon:a.lon+t*(b.lon-a.lon),lat:rect.south};}},
+   {inside:p=>p.lat<=rect.north, intersect:(a,b)=>{
+     const t=(rect.north-a.lat)/(b.lat-a.lat);return{lon:a.lon+t*(b.lon-a.lon),lat:rect.north};}},
+ ];
+ for(const edge of edges){
+   if(!poly.length)break;
+   const input=poly;poly=[];
+   let s=input[input.length-1];
+   for(const e of input){
+     const ein=edge.inside(e),sin=edge.inside(s);
+     if(ein){
+       if(!sin)poly.push(edge.intersect(s,e));
+       poly.push(e);
+     }else if(sin){
+       poly.push(edge.intersect(s,e));
+     }
+     s=e;
+   }
+ }
+ return poly;
+}
+
 function mediumOutsideGeo(t){
  if(isHideSeek()||S.navMode!=="medium"||!t||S.boundary.length<3)return emptyGeo();
- const g=gridBounds(t),b=box(S.boundary);
- const minLon=Math.min(g.west,b.minLon)-0.002;
- const maxLon=Math.max(g.east,b.maxLon)+0.002;
- const minLat=Math.min(g.south,b.minLat)-0.002;
- const maxLat=Math.max(g.north,b.maxLat)+0.002;
+ const g=gridBounds(t);
+ const valid=clipPolyToRect(S.boundary,g);
+ if(valid.length<3)return{
+   type:"FeatureCollection",
+   features:[{type:"Feature",properties:{kind:"outside"},geometry:{type:"Polygon",coordinates:[[
+     [g.west,g.south],[g.east,g.south],[g.east,g.north],[g.west,g.north],[g.west,g.south]
+   ]]}}]
+ };
 
  const outer=[
-   [minLon,minLat],[maxLon,minLat],[maxLon,maxLat],[minLon,maxLat],[minLon,minLat]
+   [g.west,g.south],[g.east,g.south],[g.east,g.north],[g.west,g.north],[g.west,g.south]
  ];
- const hole=S.boundary.map(p=>[p.lon,p.lat]);
- if(hole.length)hole.push([...hole[0]]);
-
+ const hole=valid.map(p=>[p.lon,p.lat]);
+ hole.push([...hole[0]]);
  return{
    type:"FeatureCollection",
    features:[{type:"Feature",properties:{kind:"outside"},geometry:{type:"Polygon",coordinates:[outer,hole]}}]
@@ -951,7 +994,15 @@ function mediumOutsideGeo(t){
 
 function mediumInvalidExclusionsGeo(t){
  if(isHideSeek()||S.navMode!=="medium"||!t)return emptyGeo();
- return exclusionsGeo();
+ const g=gridBounds(t),features=[];
+ for(const z of (S.exclusionZones||[])){
+   if(!z.points||z.points.length<3)continue;
+   const clipped=clipPolyToRect(z.points,g);
+   if(clipped.length<3)continue;
+   const ring=clipped.map(p=>[p.lon,p.lat]);ring.push([...ring[0]]);
+   features.push({type:"Feature",properties:{id:z.id},geometry:{type:"Polygon",coordinates:[ring]}});
+ }
+ return{type:"FeatureCollection",features};
 }
 
 function ensureAreaLayers(map){
@@ -975,7 +1026,13 @@ function ensureAreaLayers(map){
      id:"medium-outside-mask-fill",
      type:"fill",
      source:"medium-outside-mask",
-     paint:{"fill-color":"#334155","fill-opacity":0.48}
+     paint:{"fill-color":"#64748b","fill-opacity":0.62}
+   });
+   map.addLayer({
+     id:"medium-outside-mask-line",
+     type:"line",
+     source:"medium-outside-mask",
+     paint:{"line-color":"#334155","line-width":2,"line-dasharray":[2,2]}
    });
  }
  if(!map.getSource("medium-invalid-exclusions")){
@@ -984,7 +1041,13 @@ function ensureAreaLayers(map){
      id:"medium-invalid-exclusions-fill",
      type:"fill",
      source:"medium-invalid-exclusions",
-     paint:{"fill-color":"#7f1d1d","fill-opacity":0.38}
+     paint:{"fill-color":"#dc2626","fill-opacity":0.48}
+   });
+   map.addLayer({
+     id:"medium-invalid-exclusions-line",
+     type:"line",
+     source:"medium-invalid-exclusions",
+     paint:{"line-color":"#991b1b","line-width":2.5,"line-dasharray":[2,1.5]}
    });
  }
  if(!map.getSource("found-hiders")){
@@ -1642,7 +1705,7 @@ function ensureGameSources(map){
      id:"medium-outside-mask-fill",
      type:"fill",
      source:"medium-outside-mask",
-     paint:{"fill-color":"#334155","fill-opacity":0.48}
+     paint:{"fill-color":"#64748b","fill-opacity":0.62}
    });
  }
  if(!map.getSource("medium-invalid-exclusions")){
@@ -1651,7 +1714,7 @@ function ensureGameSources(map){
      id:"medium-invalid-exclusions-fill",
      type:"fill",
      source:"medium-invalid-exclusions",
-     paint:{"fill-color":"#7f1d1d","fill-opacity":0.38}
+     paint:{"fill-color":"#dc2626","fill-opacity":0.48}
    });
  }
  if(!map.getSource("exclusions")){
@@ -1704,6 +1767,8 @@ function ensurePersistentBoundary(map){
  map.getSource("grid").setData(
    !isHideSeek() && S.navMode==="medium" && target ? gridGeo(target) : {type:"FeatureCollection",features:[]}
  );
+ if(map.getSource("medium-outside-mask"))map.getSource("medium-outside-mask").setData(mediumOutsideGeo(target));
+ if(map.getSource("medium-invalid-exclusions"))map.getSource("medium-invalid-exclusions").setData(mediumInvalidExclusionsGeo(target));
  if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
  if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
  return true;

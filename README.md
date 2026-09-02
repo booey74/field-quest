@@ -1,40 +1,34 @@
-# Field Quest v1.13.1
+# Field Quest v1.13.2
 
-UX and safety polish release built from stable v1.12.2.
+Focused patch built from v1.13.1.
 
-## Main boundary warning
-Main-boundary warning behaviour has been simplified before field testing.
+## Hide & Seek setup numbering
+Challenge Hunt keeps five setup steps.
 
-During active gameplay:
-- No warning is shown while the player remains inside the defined play area.
-- OUTSIDE appears only after GPS indicates the player has crossed beyond the main boundary.
-- A 2 m inside-clear margin prevents the warning rapidly flashing on/off because of normal GPS drift near the edge.
-- OUTSIDE uses a finite vibration pattern on entry.
-- Exclusion-zone warnings always take priority if both warning conditions apply.
-- The same warning state appears in normal and expanded gameplay views.
+Hide & Seek hides the Player & questions section and now renumbers the visible setup:
+1. Define the play area
+2. Game mode
+3. Difficulty
+4. Game settings
 
-This is intentionally different from exclusion-zone behaviour:
-- Exclusion zones retain CAUTION before entry and DANGER inside.
-- The main boundary only warns after the player has actually left the playable area.
+There is no longer a visible jump from step 2 to step 4.
 
-These warnings are advisory only. Phone GPS can drift and Field Quest is not a
-safety-critical navigation system.
+## Medium search-area invalid overlap
+v1.13.1 created the invalid-area map layers but the persistent game-map refresh path
+did not feed them data.
 
-## Medium search-area clarification
-Challenge Hunt Medium keeps the existing search-area geometry and uncertainty.
+v1.13.2 fixes that refresh path and also changes the geometry so only invalid parts
+of the orange Medium search cell are shaded.
 
-When the search rectangle extends into invalid space:
-- Space outside the main boundary is visually muted grey.
-- Exclusion-zone space is visually reinforced as invalid red.
-- The search rectangle itself is not shrunk or moved around the true checkpoint.
-- The exact checkpoint remains hidden.
-- The treatment is shared by normal and expanded maps.
+- Parts of the orange search cell outside the green play boundary are shaded grey.
+- Parts of the orange search cell overlapping exclusion zones are shaded red.
+- Grey/red overlays include dashed outlines for clarity.
+- The orange search cell itself is unchanged.
+- The checkpoint remains hidden.
+- Normal and expanded maps use the same data.
 
-## Retained from v1.12.2
-- Challenge Hunt Easy / Medium / Hard.
-- Hide & Seek Easy / Medium / Hard.
-- Saved boundaries and exclusion zones.
-- Exclusion-zone CAUTION/DANGER warnings.
-- North Up / Travel Up.
-- Player follow, Re-centre and expanded maps.
-- Found-hider geographic markers and one-shot completion.
+## Unchanged
+- Main-boundary warning remains OUTSIDE-only.
+- 2 m inside-clear hysteresis remains.
+- Exclusion-zone warnings retain priority.
+- Challenge Hunt and Hide & Seek game mechanics are otherwise unchanged.
