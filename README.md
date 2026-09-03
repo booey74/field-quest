@@ -1,34 +1,30 @@
-# Field Quest v1.13.2
+# Field Quest v1.14
 
-Focused patch built from v1.13.1.
+First playable Floor Is Lava release candidate, built from stable v1.13.2.
 
-## Hide & Seek setup numbering
-Challenge Hunt keeps five setup steps.
+## Floor Is Lava
+- Third single-player game mode.
+- Endless levels: the game continues until the player fails.
+- Easy = 3 circular safe zones, Medium = 2, Hard = 1.
+- Each safe-zone circle starts at 4% of usable playable area.
+- Safe-zone diameter reduces by level but never below 10 m.
+- Minimum usable playable area: 2,000 m² after exclusions.
+- Safe zones are fully inside the main boundary, outside exclusions and buffered from edges.
+- Safe-zone locations are regenerated every level and kept away from the player's position where practical.
+- A 5-second pre-lava countdown shows the safe zones while the map remains normal.
+- The playable floor turns bright red only when the lava phase actually begins.
+- Entering any green safe zone gives immediate SAFE feedback.
+- Last five seconds of countdowns use one short vibration pulse per second.
+- Active time is based on nearest safe-zone travel distance and progressively tightens by level.
+- Score is levels completed.
+- Separate local high scores are stored for Easy, Medium and Hard.
 
-Hide & Seek hides the Player & questions section and now renumbers the visible setup:
-1. Define the play area
-2. Game mode
-3. Difficulty
-4. Game settings
+## Test-first constants
+These are deliberately initial values for real-world testing:
+- Minimum area: 2,000 m²
+- Starting individual safe-zone share: 4%
+- Minimum diameter: 10 m
+- Pre-lava countdown: 5 s
 
-There is no longer a visible jump from step 2 to step 4.
-
-## Medium search-area invalid overlap
-v1.13.1 created the invalid-area map layers but the persistent game-map refresh path
-did not feed them data.
-
-v1.13.2 fixes that refresh path and also changes the geometry so only invalid parts
-of the orange Medium search cell are shaded.
-
-- Parts of the orange search cell outside the green play boundary are shaded grey.
-- Parts of the orange search cell overlapping exclusion zones are shaded red.
-- Grey/red overlays include dashed outlines for clarity.
-- The orange search cell itself is unchanged.
-- The checkpoint remains hidden.
-- Normal and expanded maps use the same data.
-
-## Unchanged
-- Main-boundary warning remains OUTSIDE-only.
-- 2 m inside-clear hysteresis remains.
-- Exclusion-zone warnings retain priority.
-- Challenge Hunt and Hide & Seek game mechanics are otherwise unchanged.
+## Existing modes
+Challenge Hunt and Hide & Seek behaviour are intended to remain unchanged.
