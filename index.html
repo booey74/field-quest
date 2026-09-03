@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.1</title>
+<title>Field Quest v1.14.2</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.1</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.2</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -636,7 +636,7 @@ function lavaZonesGeo(){
  }))};
 }
 function lavaFloorGeo(){
- if(!isLava()||S.lavaPhase!=="active"||S.boundary.length<3)return emptyGeo();
+ if(!isLava()||S.lavaPhase!=="resolve"||S.boundary.length<3)return emptyGeo();
  const outer=S.boundary.map(p=>[p.lon,p.lat]);outer.push([...outer[0]]);
  const holes=[];
  for(const z of (S.exclusionZones||[])){
@@ -662,10 +662,10 @@ function setLavaUi(kind,main,count,sub){
  panel.classList.remove("hidden","active","safe","failed","recovery");
  if(kind)panel.classList.add(kind);
  $("lavaPhase").textContent=
-   kind==="active"?"FLOOR IS LAVA":
    kind==="safe"?"SAFE":
    kind==="failed"?"GAME OVER":
-   S.lavaPhase==="free"?"FREE MOVEMENT":"GET READY";
+   S.lavaPhase==="resolve"?"FLOOR IS LAVA":
+   S.lavaPhase==="free"?"FREE MOVEMENT":"FLOOR IS LAVA IN";
  $("lavaMain").textContent=main;
  $("lavaCountdown").textContent=count==null?"—":count;
  $("lavaSub").textContent=sub||"";
@@ -746,64 +746,69 @@ function beginLavaPreCountdown(){
    endLavaGame(false,e.message||"Could not create a fair next level.");
    return;
  }
- S.lavaDeadline=Date.now()+LAVA_PRECOUNTDOWN*1000;
- setLavaUi("recovery","GET READY",LAVA_PRECOUNTDOWN,`Safe zones are now visible • Level ${S.lavaLevel} begins when the countdown reaches zero.`);
- refreshLavaMaps();
- S.lavaTimer=setInterval(()=>{
-   const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
-   $("lavaCountdown").textContent=sec;
-   lavaPulse(sec);
-   hud();
-   if(sec<=0){clearLavaTimer();beginLavaActive()}
- },200);
-}
-function beginLavaActive(){
- S.lavaPhase="active";
+
  const secs=lavaTravelTimeSeconds();
  S.lavaDeadline=Date.now()+secs*1000;
  S.lavaLastPulseSecond=null;
- setLavaUi("active","GET TO A SAFE ZONE!",secs,`${lavaZoneCount()} safe zone${lavaZoneCount()===1?"":"s"} • ${Math.round(S.lavaRadius*2)} m diameter`);
+ setLavaUi(
+   "recovery",
+   "GET TO A SAFE ZONE!",
+   secs,
+   `${lavaZoneCount()} safe zone${lavaZoneCount()===1?"":"s"} • ${Math.round(S.lavaRadius*2)} m diameter`
+ );
  refreshLavaMaps();
+
  S.lavaTimer=setInterval(()=>{
    const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
    $("lavaCountdown").textContent=sec;
    lavaPulse(sec);
    hud();
-   if(sec<=0){clearLavaTimer();endLavaGame(false,"You didn't reach a safe zone in time.")}
- },200);
- updateLavaPosition();
-}
-function updateLavaPosition(){
- if(!isLava()||S.lavaPhase!=="active"||!S.currentPos)return;
- for(const z of S.lavaZones){
-   if(dist(S.currentPos,z)<=S.lavaRadius){
-     completeLavaLevel();return;
+   if(sec<=0){
+     clearLavaTimer();
+     resolveLavaCountdown();
    }
- }
+ },200);
 }
-function completeLavaLevel(){
- if(S.lavaPhase!=="active")return;
+function resolveLavaCountdown(){
  clearLavaTimer();
- S.lavaPhase="safe";S.lavaCompleted=S.lavaLevel;
- if(S.lavaCompleted>lavaHighScore()){
-   S.lavaHighScores[S.navMode]=S.lavaCompleted;saveLavaHighScores();
- }
- if(navigator.vibrate)try{navigator.vibrate([120,80,120])}catch(e){}
- setLavaUi("safe","YOU'RE SAFE!","✓",`Level ${S.lavaLevel} complete • High score ${lavaHighScore()}`);
+ S.lavaPhase="resolve";
  refreshLavaMaps();
 
- // Brief SAFE confirmation, then fully clear the completed round
- // before returning to free movement.
+ const inSafe=!!(S.currentPos&&S.lavaZones.some(z=>dist(S.currentPos,z)<=S.lavaRadius));
+ if(inSafe)completeLavaLevel();
+ else endLavaGame(false,"The floor became lava before you reached a safe zone.");
+}
+
+function updateLavaPosition(){
+ return;
+}
+function completeLavaLevel(){
+ if(S.lavaPhase!=="resolve")return;
+ clearLavaTimer();
+ S.lavaCompleted=S.lavaLevel;
+ if(S.lavaCompleted>lavaHighScore()){
+   S.lavaHighScores[S.navMode]=S.lavaCompleted;
+   saveLavaHighScores();
+ }
+ if(navigator.vibrate)try{navigator.vibrate([120,80,120])}catch(e){}
+
+ // Show the red lava judgement moment, then clear to SAFE.
  setTimeout(()=>{
-   if(!isLava()||S.lavaPhase!=="safe")return;
-   beginLavaFreeMove();
- },1800);
+   if(!isLava()||S.lavaPhase!=="resolve")return;
+   S.lavaPhase="safe";
+   setLavaUi("safe","YOU'RE SAFE!","✓",`Level ${S.lavaLevel} complete • High score ${lavaHighScore()}`);
+   refreshLavaMaps();
+   setTimeout(()=>{
+     if(isLava()&&S.lavaPhase==="safe")beginLavaFreeMove();
+   },1400);
+ },220);
 }
 function endLavaGame(success,msg){
- clearLavaTimer();S.lavaPhase="failed";
+ clearLavaTimer();
+ S.lavaPhase="resolve";
+ refreshLavaMaps();
  if(navigator.vibrate)try{navigator.vibrate([350,120,350])}catch(e){}
  setLavaUi("failed","GAME OVER","×",`${msg||"The lava got you."} • Levels completed ${S.lavaCompleted} • High score ${lavaHighScore()}`);
- refreshLavaMaps();
 }
 function startLavaGame(){
  const usable=usablePlayableArea();
@@ -2068,7 +2073,7 @@ function ensurePersistentBoundary(map){
  if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
  if(map.getSource("lava-floor"))map.getSource("lava-floor").setData(lavaFloorGeo());
  if(map.getSource("lava-zones"))map.getSource("lava-zones").setData(
-   isLava()&&(S.lavaPhase==="precountdown"||S.lavaPhase==="active")?lavaZonesGeo():emptyGeo()
+   isLava()&&(S.lavaPhase==="precountdown"||S.lavaPhase==="resolve")?lavaZonesGeo():emptyGeo()
  );
  return true;
 }
@@ -2356,7 +2361,7 @@ function enterCompletedGameState(){
 
 function updateGame(){
  if(!S.currentPos||!S.checkpoints.length)return;
- if(isLava()){updateLavaPosition();return}
+ if(isLava()){return}
  if(isHideSeek()){updateHideSeekGame();return}
  if(S.currentIndex>=S.checkpoints.length)return;
  let t=S.checkpoints[S.currentIndex],d=dist(S.currentPos,t),r=+$("unlockRadius").value;
@@ -2370,16 +2375,16 @@ function updateGame(){
 }
 function hud(d=S.lastDistance){
  if(isLava()){
-   $("hudTopLabel").textContent=S.lavaPhase==="active"?"FLOOR IS LAVA":"LEVEL";
+   $("hudTopLabel").textContent=S.lavaPhase==="resolve"?"FLOOR IS LAVA":"LEVEL";
    $("hudCheckpoint").textContent=`Level ${Math.max(1,S.lavaLevel)} • Best ${lavaHighScore()}`;
-   if(S.lavaPhase==="active"||S.lavaPhase==="precountdown"||S.lavaPhase==="free"){
+   if(S.lavaPhase==="precountdown"||S.lavaPhase==="free"){
      const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
      $("hudDistance").textContent=`${sec}s`;
    }else $("hudDistance").textContent=S.lavaPhase==="safe"?"SAFE":"—";
    $("hudHint").textContent=
-     S.lavaPhase==="active"?"GET TO GREEN!":
+     S.lavaPhase==="precountdown"?"GET TO GREEN!":
      S.lavaPhase==="safe"?"You're safe":
-     S.lavaPhase==="precountdown"?"Safe zones visible — get ready":
+     S.lavaPhase==="resolve"?"FLOOR IS LAVA":
      "Move around — safe zones hidden";
    return;
  }
