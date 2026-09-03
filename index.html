@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14</title>
+<title>Field Quest v1.14.1</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.1</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.1</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -661,7 +661,11 @@ function setLavaUi(kind,main,count,sub){
  const panel=$("lavaStatus");
  panel.classList.remove("hidden","active","safe","failed","recovery");
  if(kind)panel.classList.add(kind);
- $("lavaPhase").textContent=kind==="active"?"FLOOR IS LAVA":kind==="safe"?"SAFE":kind==="failed"?"GAME OVER":"NEXT LEVEL";
+ $("lavaPhase").textContent=
+   kind==="active"?"FLOOR IS LAVA":
+   kind==="safe"?"SAFE":
+   kind==="failed"?"GAME OVER":
+   S.lavaPhase==="free"?"FREE MOVEMENT":"GET READY";
  $("lavaMain").textContent=main;
  $("lavaCountdown").textContent=count==null?"—":count;
  $("lavaSub").textContent=sub||"";
@@ -712,6 +716,27 @@ function lavaTravelTimeSeconds(){
  const pressure=Math.pow(0.97,Math.max(0,S.lavaLevel-1));
  return Math.max(2,Math.ceil((nearest/cfg.speed+cfg.margin)*pressure));
 }
+
+function beginLavaFreeMove(){
+ clearLavaTimer();
+ S.lavaPhase="free";
+ S.lavaZones=[];
+ S.lavaDeadline=Date.now()+6000;
+ setLavaUi("recovery","MOVE AROUND THE PLAY AREA",6,"The next safe zones are hidden. Keep moving until the countdown begins.");
+ refreshLavaMaps();
+
+ S.lavaTimer=setInterval(()=>{
+   const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
+   $("lavaCountdown").textContent=sec;
+   // No vibration during free movement countdown.
+   hud();
+   if(sec<=0){
+     clearLavaTimer();
+     beginLavaPreCountdown();
+   }
+ },200);
+}
+
 function beginLavaPreCountdown(){
  clearLavaTimer();
  S.lavaPhase="precountdown";
@@ -722,7 +747,7 @@ function beginLavaPreCountdown(){
    return;
  }
  S.lavaDeadline=Date.now()+LAVA_PRECOUNTDOWN*1000;
- setLavaUi("recovery","MOVE AROUND THE PLAY AREA",LAVA_PRECOUNTDOWN,`Safe zones are ready • Level ${S.lavaLevel} starts when the countdown reaches zero.`);
+ setLavaUi("recovery","GET READY",LAVA_PRECOUNTDOWN,`Safe zones are now visible • Level ${S.lavaLevel} begins when the countdown reaches zero.`);
  refreshLavaMaps();
  S.lavaTimer=setInterval(()=>{
    const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
@@ -766,7 +791,13 @@ function completeLavaLevel(){
  if(navigator.vibrate)try{navigator.vibrate([120,80,120])}catch(e){}
  setLavaUi("safe","YOU'RE SAFE!","✓",`Level ${S.lavaLevel} complete • High score ${lavaHighScore()}`);
  refreshLavaMaps();
- setTimeout(()=>{if(isLava()&&S.lavaPhase==="safe")beginLavaPreCountdown()},2200);
+
+ // Brief SAFE confirmation, then fully clear the completed round
+ // before returning to free movement.
+ setTimeout(()=>{
+   if(!isLava()||S.lavaPhase!=="safe")return;
+   beginLavaFreeMove();
+ },1800);
 }
 function endLavaGame(success,msg){
  clearLavaTimer();S.lavaPhase="failed";
@@ -2036,7 +2067,9 @@ function ensurePersistentBoundary(map){
  if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
  if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
  if(map.getSource("lava-floor"))map.getSource("lava-floor").setData(lavaFloorGeo());
- if(map.getSource("lava-zones"))map.getSource("lava-zones").setData(isLava()&&S.lavaPhase!=="idle"&&S.lavaPhase!=="failed"?lavaZonesGeo():emptyGeo());
+ if(map.getSource("lava-zones"))map.getSource("lava-zones").setData(
+   isLava()&&(S.lavaPhase==="precountdown"||S.lavaPhase==="active")?lavaZonesGeo():emptyGeo()
+ );
  return true;
 }
 
@@ -2146,7 +2179,7 @@ function generate(){
 
    if(!S.gameMap)S.gameMap=createGameMap("gameMap");
    else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
-   updatePlayers();refreshLavaMaps();beginLavaPreCountdown();
+   updatePlayers();refreshLavaMaps();beginLavaFreeMove();
    updateExclusionSafetyWarning();updateBoundarySafetyWarning();applyTravelBearing();
    setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
    return;
@@ -2339,11 +2372,15 @@ function hud(d=S.lastDistance){
  if(isLava()){
    $("hudTopLabel").textContent=S.lavaPhase==="active"?"FLOOR IS LAVA":"LEVEL";
    $("hudCheckpoint").textContent=`Level ${Math.max(1,S.lavaLevel)} • Best ${lavaHighScore()}`;
-   if(S.lavaPhase==="active"||S.lavaPhase==="precountdown"){
+   if(S.lavaPhase==="active"||S.lavaPhase==="precountdown"||S.lavaPhase==="free"){
      const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
      $("hudDistance").textContent=`${sec}s`;
    }else $("hudDistance").textContent=S.lavaPhase==="safe"?"SAFE":"—";
-   $("hudHint").textContent=S.lavaPhase==="active"?"GET TO GREEN!":S.lavaPhase==="safe"?"You're safe":"Move around — get ready";
+   $("hudHint").textContent=
+     S.lavaPhase==="active"?"GET TO GREEN!":
+     S.lavaPhase==="safe"?"You're safe":
+     S.lavaPhase==="precountdown"?"Safe zones visible — get ready":
+     "Move around — safe zones hidden";
    return;
  }
  if(isHideSeek()){
