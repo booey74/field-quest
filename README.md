@@ -1,14 +1,14 @@
-# Field Quest v1.14.2
+# Field Quest v1.14.3
 
-Corrected Floor Is Lava flow.
+Focused Floor Is Lava feedback patch.
 
-## Sequence
-1. Free movement — no zones, normal floor.
-2. Pre-lava countdown — safe zones visible, normal floor, player races to a zone.
-3. Countdown reaches zero — floor turns red.
-4. Immediate judgement — inside a safe zone passes; outside all safe zones is game over.
+## Changes
+- During the countdown, entering a safe zone immediately shows SAFE ZONE REACHED.
+- The safe zone currently occupied is visually emphasised.
+- If GPS moves the player back outside before zero, the SAFE indication clears again.
+- The countdown continues to zero; success is still judged only at zero.
+- At zero, the floor turns red and pass/fail is decided immediately.
+- On success, the red lava result state remains visible for 5 seconds before free movement resumes.
+- On failure, GAME OVER remains on the red lava state.
 
-There is no separate active-lava travel timer.
-
-All v1.14 difficulty constants, safe-zone sizing, placement rules, minimum area,
-endless progression and local high scores remain unchanged.
+Difficulty constants, placement rules, scoring and high-score logic are unchanged.
