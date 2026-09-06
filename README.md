@@ -1,13 +1,14 @@
-# Field Quest v1.14.5
+# Field Quest v1.14.6
 
-Focused Floor Is Lava mode-isolation patch built from v1.14.4.
+Focused Floor Is Lava Medium-mode isolation patch built from v1.14.5.
 
-## Changes
-- Floor Is Lava Medium no longer shows Challenge Hunt's orange target/search area.
-- Floor Is Lava Hard no longer shows Challenge Hunt's large navigation compass panel.
-- Floor Is Lava keeps the normal map mini-compass.
-- North Up, Travel Up, Re-centre and Expand map remain available.
-- No changes to Floor Is Lava safe-zone placement, timing, scoring, high scores,
-  red-floor behaviour or difficulty progression.
+## Fix
+- Challenge Hunt's Medium orange target/search grid is now fully suppressed in Floor Is Lava.
+- Every shared `grid` source update is gated so it cannot write when Floor Is Lava is active.
+- The previous unreachable post-return clear has been removed.
+- A reachable Lava grid clear now runs inside the normal map refresh path.
 
-This patch only prevents Challenge Hunt UI/state from leaking into Floor Is Lava.
+## Unchanged
+- Floor Is Lava timing, safe-zone placement, red-floor behaviour, scoring, high scores and difficulty.
+- Challenge Hunt Medium retains its existing search-area behaviour.
+- Hard Floor Is Lava remains free of the large Challenge Hunt compass panel.
