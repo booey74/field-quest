@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.4</title>
+<title>Field Quest v1.14.5</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.4</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.5</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.4</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.5</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -1292,7 +1292,7 @@ function clipPolyToRect(points,rect){
 }
 
 function mediumOutsideGeo(t){
- if(isHideSeek()||S.navMode!=="medium"||!t||S.boundary.length<3)return emptyGeo();
+ if(isHideSeek()||isLava()||S.navMode!=="medium"||!t||S.boundary.length<3)return emptyGeo();
  const g=gridBounds(t);
  const valid=clipPolyToRect(S.boundary,g);
  if(valid.length<3)return{
@@ -1314,7 +1314,7 @@ function mediumOutsideGeo(t){
 }
 
 function mediumInvalidExclusionsGeo(t){
- if(isHideSeek()||S.navMode!=="medium"||!t)return emptyGeo();
+ if(isHideSeek()||isLava()||S.navMode!=="medium"||!t)return emptyGeo();
  const g=gridBounds(t),features=[];
  for(const z of (S.exclusionZones||[])){
    if(!z.points||z.points.length<3)continue;
@@ -2107,6 +2107,7 @@ function ensurePersistentBoundary(map){
    isLava()&&(S.lavaPhase==="precountdown"||S.lavaPhase==="resolve")?lavaZonesGeo():emptyGeo()
  );
  return true;
+ if(isLava()&&map.getSource("grid"))map.getSource("grid").setData(emptyGeo());
 }
 
 function syncMapState(map,prefix){
@@ -2300,6 +2301,7 @@ function generate(){
 }
 
 function updateHardCompass(){
+ if(isLava()){if($("hardNavPanel"))$("hardNavPanel").classList.add("hidden");return;}
  const panel=$("hardNavPanel");
  if(isHideSeek()||S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length){
    if(panel&&S.navMode==="hard"&&S.currentIndex>=S.checkpoints.length)panel.classList.add("hidden");
