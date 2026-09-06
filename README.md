@@ -1,14 +1,10 @@
-# Field Quest v1.14.3
+# Field Quest v1.14.4
 
-Focused Floor Is Lava feedback patch.
+Focused expanded-HUD patch for Floor Is Lava.
 
-## Changes
-- During the countdown, entering a safe zone immediately shows SAFE ZONE REACHED.
-- The safe zone currently occupied is visually emphasised.
-- If GPS moves the player back outside before zero, the SAFE indication clears again.
-- The countdown continues to zero; success is still judged only at zero.
-- At zero, the floor turns red and pass/fail is decided immediately.
-- On success, the red lava result state remains visible for 5 seconds before free movement resumes.
-- On failure, GAME OVER remains on the red lava state.
-
-Difficulty constants, placement rules, scoring and high-score logic are unchanged.
+Changes:
+- Expanded countdown/free-movement HUD uses TIME instead of DISTANCE.
+- Resolved Floor Is Lava state uses STATUS.
+- Successful resolution shows SAFE / YOU'RE SAFE!
+- Failed resolution clearly shows GAME OVER.
+- Existing game timing, red-floor behaviour, safe-zone logic, placement, scoring and difficulty are unchanged.
