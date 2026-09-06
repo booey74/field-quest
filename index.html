@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.6</title>
+<title>Field Quest v1.14.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.6</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.7</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.6</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.7</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -298,7 +298,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   </div>
   <p id="drawBoundaryStatus" class="boundary-help">Tap the map to add points. Drag a numbered point to adjust it before confirming.</p>
 </div>
-<div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
+<div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Usable play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
 
 <div class="exclusion-panel">
@@ -1235,7 +1235,9 @@ function polygonAreaM2(poly){
 }
 function updateBoundaryArea(){
  const el=$("boundaryArea");if(!el)return;
- const a=polygonAreaM2(S.boundary);
+ let a=polygonAreaM2(S.boundary);
+ for(const z of (S.exclusionZones||[]))a-=polygonAreaM2(z.points||[]);
+ a=Math.max(0,a);
  el.textContent=a>0?`${Math.round(a).toLocaleString()} m²`:"—";
 }
 
