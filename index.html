@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.7</title>
+<title>Field Quest v1.14.8</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.7</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.8</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.7</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.8</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -514,6 +514,50 @@ function refreshSetupStepNumbers(){
  if($("stepSettingsNum"))$("stepSettingsNum").textContent=compact?"4.":"5.";
 }
 
+
+function resetActiveGameForModeSwitch(){
+ if(S.lavaTimer||S.lavaPhase!=="idle")stopLavaGame();
+
+ S.hideSeekCompleted=false;
+ S.checkpoints=[];
+ S.trailPoints=[];
+ S.lastTrailPointAt=0;
+ S.score=0;
+ S.currentIndex=0;
+ S.unlocked=false;
+ S.firstDistance=null;
+ S.lastDistance=null;
+
+ if($("gameCard"))$("gameCard").classList.add("hidden");
+ if($("challengePanel"))$("challengePanel").classList.add("hidden");
+ if($("hardNavPanel"))$("hardNavPanel").classList.add("hidden");
+ if($("zoneText")){
+   $("zoneText").textContent="";
+   $("zoneText").classList.add("hidden");
+ }
+ if($("feedback"))$("feedback").textContent="";
+ if($("answerOptions"))$("answerOptions").innerHTML="";
+
+ for(const key of ["gameTargetMarker","fullTargetMarker","gameTarget","fullTarget"]){
+   if(S[key]){
+     try{S[key].remove()}catch(e){}
+     S[key]=null;
+   }
+ }
+
+ const empty={type:"FeatureCollection",features:[]};
+ for(const map of [S.gameMap,S.fullMap]){
+   if(!map||!map.isStyleLoaded())continue;
+   for(const sourceId of ["search-trail","found-hiders","grid","medium-outside","medium-invalid-exclusions","lava-zones"]){
+     const source=map.getSource(sourceId);
+     if(source)try{source.setData(empty)}catch(e){}
+   }
+ }
+
+ resetExclusionWarning();
+ resetBoundaryWarning();
+}
+
 function refreshGameTypeUi(){
  S.gameType=gameType();
  const hide=isHideSeek(),lava=isLava(),compact=hide||lava;
@@ -583,7 +627,7 @@ function exclusionEdgeDist(p){let best=Infinity;for(const z of (S.exclusionZones
 
 const LAVA_HIGHSCORE_KEY="fieldQuestLavaHighScoresV1";
 const LAVA_MIN_USABLE_AREA=2000;
-const LAVA_START_ZONE_SHARE=0.04;
+const LAVA_START_ZONE_SHARE=0.10;
 const LAVA_MIN_DIAMETER=10;
 const LAVA_EDGE_BUFFER=2;
 const LAVA_PRECOUNTDOWN=5;
@@ -713,7 +757,7 @@ function generateLavaZones(){
 function lavaTravelTimeSeconds(){
  const nearest=Math.min(...S.lavaZones.map(z=>dist(S.currentPos,z)));
  const cfg=S.navMode==="easy"?{speed:1.7,margin:8}:S.navMode==="medium"?{speed:1.9,margin:6}:{speed:2.1,margin:4};
- const pressure=Math.pow(0.97,Math.max(0,S.lavaLevel-1));
+ const pressure=Math.pow(0.94,Math.max(0,S.lavaLevel-1));
  return Math.max(2,Math.ceil((nearest/cfg.speed+cfg.margin)*pressure));
 }
 
@@ -2570,7 +2614,7 @@ $("expandedConfirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
 $("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;
 document.querySelectorAll('input[name="gameType"]').forEach(el=>el.onchange=()=>{
- if(S.lavaTimer||S.lavaPhase!=="idle")stopLavaGame();
+ resetActiveGameForModeSwitch();
  refreshGameTypeUi();
 });
 $("generateBtn").onclick=generate;
@@ -2581,16 +2625,7 @@ $("recenterFullBtn").onclick=()=>enableFollow(S.fullMap);
 $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{
- if(isLava())stopLavaGame();
- $("gameCard").classList.add("hidden");
- S.hideSeekCompleted=false;
- S.checkpoints=[];S.trailPoints=[];S.score=0;S.currentIndex=0;
- if(S.gameMap&&S.gameMap.isStyleLoaded()&&S.gameMap.getSource("search-trail"))S.gameMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
- if(S.fullMap&&S.fullMap.isStyleLoaded()&&S.fullMap.getSource("search-trail"))S.fullMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
- for(const map of [S.gameMap,S.fullMap]){
-   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders"))map.getSource("found-hiders").setData({type:"FeatureCollection",features:[]});
- }
- resetExclusionWarning();
+ resetActiveGameForModeSwitch();
 };
 
 ensureSetupMap();loadLavaHighScores();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();refreshGameTypeUi();
