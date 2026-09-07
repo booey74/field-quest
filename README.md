@@ -1,28 +1,19 @@
-# Field Quest v1.14.8
+# Field Quest v1.14.9
 
-Release-candidate patch built from v1.14.7.
+Release-candidate patch built from v1.14.8.
 
-## Fixes / changes
+## Fix
 
-### Game-mode switching
-- Changing game mode now clears the previous active game's UI and state.
-- Removes stale checkpoints, hiders, Floor Is Lava state, target markers,
-  trails, search grids and result information before the next game starts.
+### Floor Is Lava safe-zone placement
+- Removes the previous extra 4 m gap required between safe zones.
+- Safe zones must still not overlap.
+- Existing 2 m safety buffers from the main boundary and exclusion-zone edges are unchanged.
+- Level 1 safe zones remain 10% of usable playable area per circle.
+- Minimum safe-zone diameter remains 10 m.
+- v1.14.8 level shrinkage and countdown progression are unchanged.
 
-### Floor Is Lava safe-zone progression
-- Level 1 safe-zone area increased from 4% to 10% of usable playable area
-  per circle.
-- Zone area continues to reduce by 10% per level until the existing
-  10 m minimum diameter is reached.
-- The 10 m GPS-safe minimum is unchanged.
-
-### Floor Is Lava countdown progression
-- Level pressure now tightens by 6% per successive level after the
-  distance-based travel-time calculation, rather than 3%.
-- Distance, mode-specific assumed movement speed and safety margin still
-  determine the base countdown.
-- Existing 2-second absolute countdown floor remains unchanged.
-
-## Not included
-- New-high-score announcement remains a separate backlog enhancement.
-- GPS-aware adaptive minimum safe-zone sizing remains a future backlog idea.
+## Regression focus
+- A rectangular play area of about 2,400 m² with no exclusions should start Floor Is Lava Easy successfully.
+- Safe zones must not overlap.
+- Safe zones must remain fully inside the main boundary and outside exclusions with existing buffers.
+- v1.14.8 mode-switch and progression fixes must remain stable.
