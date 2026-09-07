@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.9</title>
+<title>Field Quest v1.14.10</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -232,11 +232,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.9</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.10</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.9</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.10</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -458,7 +458,7 @@ const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
  gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,boundaryWarningLevel:"safe",boundaryWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,hideSeekCompleted:false,
- lavaPhase:"idle",lavaLevel:0,lavaZones:[],lavaRadius:5,lavaTimer:null,lavaDeadline:0,
+ lavaPhase:"idle",lavaLevel:0,lavaZones:[],lavaRadius:5,lavaStartRadius:5,lavaTimer:null,lavaDeadline:0,
  lavaLastPulseSecond:null,lavaHighScores:{easy:0,medium:0,hard:0},lavaCompleted:0,lavaInSafe:false,lavaSafeIndex:-1
 };
 
@@ -651,11 +651,14 @@ function usablePlayableArea(){
 function lavaZoneCount(){
  return S.navMode==="easy"?3:S.navMode==="medium"?2:1;
 }
-function lavaZoneRadiusForLevel(level){
+function lavaPreferredStartRadius(){
  const usable=usablePlayableArea();
- const share=LAVA_START_ZONE_SHARE*Math.pow(0.90,Math.max(0,level-1));
- const theoretical=Math.sqrt((usable*share)/Math.PI);
- return Math.max(LAVA_MIN_DIAMETER/2,theoretical);
+ return Math.max(LAVA_MIN_DIAMETER/2,Math.sqrt((usable*LAVA_START_ZONE_SHARE)/Math.PI));
+}
+function lavaZoneRadiusForLevel(level){
+ const start=Math.max(LAVA_MIN_DIAMETER/2,S.lavaStartRadius||lavaPreferredStartRadius());
+ const shrink=Math.sqrt(Math.pow(0.90,Math.max(0,level-1)));
+ return Math.max(LAVA_MIN_DIAMETER/2,start*shrink);
 }
 function circleRing(center,radius,steps=40){
  const ring=[];
@@ -733,26 +736,62 @@ function refreshLavaMaps(){
  }
  hud();
 }
-function generateLavaZones(){
- const count=lavaZoneCount(),r=lavaZoneRadiusForLevel(S.lavaLevel),zones=[];
- const player=S.currentPos;
+function lavaMinPlayerDistance(level){
  const diagM=Math.max(1,diag(S.boundary));
- const minPlayerDistance=Math.min(Math.max(10,diagM*(0.12+Math.min(S.lavaLevel,20)*0.006)),diagM*0.42);
- for(let i=0;i<count;i++){
-   let chosen=null;
-   for(let attempt=0;attempt<5000;attempt++){
-     const p=randomPoint(S.boundary);
-     if(!zoneFullyValid(p,r))continue;
-     if(player&&dist(player,p)<minPlayerDistance)continue;
-     let ok=true;
-     for(const other of zones)if(dist(other,p)<2*r){ok=false;break}
-     if(!ok)continue;
-     chosen=p;break;
+ return Math.min(Math.max(10,diagM*(0.12+Math.min(level,20)*0.006)),diagM*0.42);
+}
+function findLavaZoneLayout(r,level,restarts=24,candidatesPerZone=220){
+ const count=lavaZoneCount(),player=S.currentPos,minPlayerDistance=lavaMinPlayerDistance(level);
+ for(let restart=0;restart<restarts;restart++){
+   const zones=[];
+   let failed=false;
+   for(let i=0;i<count;i++){
+     let chosen=null;
+     for(let attempt=0;attempt<candidatesPerZone;attempt++){
+       const p=randomPoint(S.boundary);
+       if(!zoneFullyValid(p,r))continue;
+       if(player&&dist(player,p)<minPlayerDistance)continue;
+       let ok=true;
+       for(const other of zones)if(dist(other,p)<2*r){ok=false;break}
+       if(!ok)continue;
+       chosen=p;break;
+     }
+     if(!chosen){failed=true;break}
+     zones.push(chosen);
    }
-   if(!chosen)throw Error("This play area cannot fit the required safe zones at this level.");
-   zones.push(chosen);
+   if(!failed&&zones.length===count)return zones;
  }
- S.lavaRadius=r;S.lavaZones=zones;
+ return null;
+}
+function findLargestLavaStartRadius(){
+ const minR=LAVA_MIN_DIAMETER/2;
+ const preferred=lavaPreferredStartRadius();
+ if(preferred<=minR)return findLavaZoneLayout(minR,1)?minR:null;
+
+ // Search from the preferred 10%-of-area size downward in 0.5 m radius steps.
+ // This makes 10% a target rather than a hard requirement for awkward shapes.
+ for(let r=preferred;r>minR;r-=0.5){
+   if(findLavaZoneLayout(r,1))return r;
+ }
+ return findLavaZoneLayout(minR,1)?minR:null;
+}
+function generateLavaZones(){
+ let r=lavaZoneRadiusForLevel(S.lavaLevel);
+ const minR=LAVA_MIN_DIAMETER/2;
+
+ // Normally the pre-flight start radius means this succeeds immediately.
+ // If player position / later-level spacing makes the target radius awkward,
+ // allow a small downward fit adjustment, never below the 10 m diameter floor.
+ while(r>=minR-0.001){
+   const zones=findLavaZoneLayout(r,S.lavaLevel,28,240);
+   if(zones){
+     S.lavaRadius=r;S.lavaZones=zones;
+     return;
+   }
+   if(r<=minR+0.001)break;
+   r=Math.max(minR,r-0.5);
+ }
+ throw Error("This play area cannot fit the required safe zones at this level.");
 }
 function lavaTravelTimeSeconds(){
  const nearest=Math.min(...S.lavaZones.map(z=>dist(S.currentPos,z)));
@@ -891,20 +930,25 @@ function startLavaGame(){
    alert(`Floor Is Lava needs at least ${LAVA_MIN_USABLE_AREA.toLocaleString()} m² of usable play area. This area has about ${Math.round(usable).toLocaleString()} m² after exclusions.`);
    return false;
  }
- S.lavaLevel=0;S.lavaCompleted=0;S.lavaZones=[];S.lavaRadius=LAVA_MIN_DIAMETER/2;S.lavaPhase="idle";
+ S.lavaLevel=0;S.lavaCompleted=0;S.lavaZones=[];S.lavaRadius=LAVA_MIN_DIAMETER/2;S.lavaStartRadius=LAVA_MIN_DIAMETER/2;S.lavaPhase="idle";
  loadLavaHighScores();
- // Pre-flight placement check at Level 1.
- S.lavaLevel=1;
- try{generateLavaZones()}catch(e){
-   S.lavaLevel=0;S.lavaZones=[];
-   alert("This play area is large enough by area, but its shape/exclusion zones cannot fit the required safe zones safely.");
+
+ // 10% of usable area is the preferred Level 1 size.
+ // For narrower / irregular boundaries, automatically use the largest
+ // safe radius that actually fits the selected difficulty and current start.
+ const fitted=findLargestLavaStartRadius();
+ if(fitted==null){
+   S.lavaLevel=0;S.lavaZones=[];S.lavaStartRadius=LAVA_MIN_DIAMETER/2;
+   alert("This play area is large enough by area, but its shape/exclusion zones cannot fit the required safe zones safely even at the 10 m minimum diameter.");
    return false;
  }
+ S.lavaStartRadius=fitted;
+ S.lavaRadius=fitted;
  S.lavaLevel=0;S.lavaZones=[];
  return true;
 }
 function stopLavaGame(){
- clearLavaTimer();S.lavaPhase="idle";S.lavaZones=[];S.lavaInSafe=false;S.lavaSafeIndex=-1;S.lavaLevel=0;S.lavaCompleted=0;
+ clearLavaTimer();S.lavaPhase="idle";S.lavaZones=[];S.lavaInSafe=false;S.lavaSafeIndex=-1;S.lavaLevel=0;S.lavaCompleted=0;S.lavaStartRadius=LAVA_MIN_DIAMETER/2;
  if($("lavaStatus"))$("lavaStatus").classList.add("hidden");
  refreshLavaMaps();
 }
