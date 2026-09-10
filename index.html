@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.14.10</title>
+<title>Field Quest v1.15</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -150,6 +150,13 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 .game-start-status{margin:10px 0 0;padding:12px 14px;border:1px solid #334155;border-radius:14px;background:#0b1324;color:#cbd5e1;font-size:.94rem;line-height:1.35}
 .game-start-status.ready{border-color:#166534;background:#052e16;color:#bbf7d0}
 .game-start-status.waiting{border-color:#854d0e;background:#2a1d05;color:#fde68a}
+.lava-high-score-settings{margin:12px 0 0;padding:12px 14px;border:1px solid #334155;border-radius:14px;background:#0b1324}
+.lava-high-score-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.lava-high-score-row strong{font-size:.95rem}
+.lava-high-score-row button{margin:0}
+.lava-high-score-note{margin:6px 0 0;color:#94a3b8;font-size:.84rem}
+.lava-high-score-announcement{margin-top:10px;padding:8px 12px;border:1px solid #facc15;border-radius:12px;background:#422006;color:#fef08a;font-weight:900;letter-spacing:.04em;text-align:center}
+.lava-high-score-announcement.hidden{display:none}
 .game-start-gps-row{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .expanded-gps-action{display:grid;grid-template-columns:1fr;width:100%;margin-bottom:8px}
 
@@ -232,11 +239,11 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.10</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.15</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.10</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.15</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -374,7 +381,15 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 <h2><span id="stepSettingsNum">5.</span> Game settings</h2>
 <label id="countSetting"><span id="countLabel">Checkpoints</span><input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
 <label id="unlockSetting">Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
-<p id="lavaSettingsNote" class="lava-settings-note hidden">Endless game • 3 safe zones on Easy, 2 on Medium, 1 on Hard • minimum usable area 2,000 m².</p><div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
+<p id="lavaSettingsNote" class="lava-settings-note hidden">Endless game • 3 safe zones on Easy, 2 on Medium, 1 on Hard • minimum usable area 2,000 m².</p>
+<div id="lavaHighScoreSettings" class="lava-high-score-settings hidden">
+  <div class="lava-high-score-row">
+    <strong id="lavaHighScoreSetupText">Easy best: 0</strong>
+    <button id="clearLavaHighScoreBtn" class="ghost" type="button">Clear Easy high score</button>
+  </div>
+  <p class="lava-high-score-note">Clears only the selected difficulty on this device.</p>
+</div>
+<div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
 <div class="game-start-gps-row">
   <button id="gameStartGpsBtn" class="primary">Start GPS</button>
 </div>
@@ -388,6 +403,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <div id="lavaMain" class="lava-main">MOVE AROUND THE PLAY AREA</div>
   <div id="lavaCountdown" class="lava-count">—</div>
   <div id="lavaSub" class="lava-sub">Safe zones will appear before the floor becomes lava.</div>
+  <div id="lavaHighScoreAnnouncement" class="lava-high-score-announcement hidden">🏆 NEW HIGH SCORE!</div>
 </div>
 <div id="exclusionSafetyAlert" class="safety-alert hidden" role="alert" aria-live="assertive">
   <strong id="exclusionSafetyTitle">CAUTION</strong>
@@ -566,6 +582,8 @@ function refreshGameTypeUi(){
  $("countSetting").classList.toggle("hidden",lava);
  $("unlockSetting").classList.toggle("hidden",lava);
  $("lavaSettingsNote").classList.toggle("hidden",!lava);
+ $("lavaHighScoreSettings").classList.toggle("hidden",!lava);
+ if(lava){loadLavaHighScores();refreshLavaHighScoreSettings()}
 
  if(lava){
    $("generateBtn").textContent="Start Floor Is Lava";
@@ -614,6 +632,11 @@ function exclusionInsideBoundary(poly){
 }
 function exclusionsValid(){
  return (S.exclusionZones||[]).every(z=>exclusionInsideBoundary(z.points));
+}
+function boundaryCanBeConfirmed(){
+ if(exclusionsValid())return true;
+ alert("This boundary cannot be confirmed because one or more existing exclusion zones would sit partly outside it. Edit or delete the affected exclusion zone first, then confirm the boundary again.");
+ return false;
 }
 
 function box(poly){let la=poly.map(p=>p.lat),lo=poly.map(p=>p.lon);return{minLat:Math.min(...la),maxLat:Math.max(...la),minLon:Math.min(...lo),maxLon:Math.max(...lo)}}
@@ -704,6 +727,43 @@ function saveLavaHighScores(){
  try{localStorage.setItem(LAVA_HIGHSCORE_KEY,JSON.stringify(S.lavaHighScores))}catch(e){}
 }
 function lavaHighScore(){return S.lavaHighScores[S.navMode]||0}
+function difficultyLabel(modeValue){
+ return modeValue==="medium"?"Medium":modeValue==="hard"?"Hard":"Easy";
+}
+function refreshLavaHighScoreSettings(){
+ if(!$("lavaHighScoreSettings"))return;
+ const selected=mode();
+ const best=S.lavaHighScores[selected]||0;
+ const label=difficultyLabel(selected);
+ $("lavaHighScoreSetupText").textContent=`${label} best: ${best}`;
+ $("clearLavaHighScoreBtn").textContent=`Clear ${label} high score`;
+ $("clearLavaHighScoreBtn").disabled=best<=0;
+}
+function clearSelectedLavaHighScore(){
+ loadLavaHighScores();
+ const selected=mode();
+ const label=difficultyLabel(selected);
+ const best=S.lavaHighScores[selected]||0;
+ if(best<=0){refreshLavaHighScoreSettings();return}
+ if(!confirm(`Clear the ${label} Floor Is Lava high score of ${best}?`))return;
+ S.lavaHighScores[selected]=0;
+ saveLavaHighScores();
+ refreshLavaHighScoreSettings();
+ if(isLava()&&S.navMode===selected){
+   $("scoreText").textContent=`Best ${lavaHighScore()}`;
+   hud();
+ }
+}
+function hideLavaHighScoreAnnouncement(){
+ const el=$("lavaHighScoreAnnouncement");
+ if(el)el.classList.add("hidden");
+}
+function showLavaHighScoreAnnouncement(){
+ const el=$("lavaHighScoreAnnouncement");
+ if(!el)return;
+ el.textContent="🏆 NEW HIGH SCORE!";
+ el.classList.remove("hidden");
+}
 function setLavaUi(kind,main,count,sub){
  const panel=$("lavaStatus");
  panel.classList.remove("hidden","active","safe","failed","recovery");
@@ -716,6 +776,7 @@ function setLavaUi(kind,main,count,sub){
  $("lavaMain").textContent=main;
  $("lavaCountdown").textContent=count==null?"—":count;
  $("lavaSub").textContent=sub||"";
+ hideLavaHighScoreAnnouncement();
  $("checkpointEyebrow").textContent="FLOOR IS LAVA";
  $("checkpointLabel").textContent=`Level ${Math.max(1,S.lavaLevel)}`;
  $("scoreText").textContent=`Best ${lavaHighScore()}`;
@@ -900,13 +961,17 @@ function completeLavaLevel(){
  clearLavaTimer();
  S.lavaCompleted=S.lavaLevel;
 
- if(S.lavaCompleted>lavaHighScore()){
+ const previousBest=lavaHighScore();
+ const newHighScore=S.lavaCompleted>previousBest;
+ if(newHighScore){
    S.lavaHighScores[S.navMode]=S.lavaCompleted;
    saveLavaHighScores();
+   refreshLavaHighScoreSettings();
  }
  if(navigator.vibrate)try{navigator.vibrate([120,80,120])}catch(e){}
 
  setLavaUi("safe","YOU'RE SAFE!","✓",`Level ${S.lavaLevel} complete • High score ${lavaHighScore()}`);
+ if(newHighScore)showLavaHighScoreAnnouncement();
  refreshLavaMaps();
 
  setTimeout(()=>{
@@ -1931,6 +1996,7 @@ function undoWalkBoundaryPoint(){
 
 function confirmWalkBoundary(){
  if(S.boundaryMode!=="walk" || S.boundary.length<3)return;
+ if(!boundaryCanBeConfirmed())return;
  S.boundaryConfirmed=true;
  refreshBoundaryControls();
  updateSetup();
@@ -1967,6 +2033,7 @@ function undoBoundaryPoint(){
 }
 function confirmDrawBoundary(){
  if(S.boundaryMode!=="draw" || S.boundary.length<3)return;
+ if(!boundaryCanBeConfirmed())return;
  S.boundaryConfirmed=true;
  refreshBoundaryControls();
  updateSetup();
@@ -2661,6 +2728,11 @@ document.querySelectorAll('input[name="gameType"]').forEach(el=>el.onchange=()=>
  resetActiveGameForModeSwitch();
  refreshGameTypeUi();
 });
+document.querySelectorAll('input[name="navMode"]').forEach(el=>el.onchange=()=>{
+ S.navMode=mode();
+ refreshLavaHighScoreSettings();
+});
+$("clearLavaHighScoreBtn").onclick=clearSelectedLavaHighScore;
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;

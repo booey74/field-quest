@@ -1,35 +1,26 @@
-# Field Quest v1.14.10
+# Field Quest v1.15
 
-Release-candidate patch built from v1.14.9.
+Core-polish release candidate built from stable v1.14.10.
 
-## Floor Is Lava adaptive Level 1 safe-zone sizing
+## Locked scope
 
-The 10% rule is now a preferred Level 1 target rather than a hard requirement.
+### Boundary / exclusion-zone consistency
+- Main-boundary confirmation is blocked if an existing exclusion zone would end up partly outside the revised boundary.
+- The parent is told to edit or delete the affected exclusion zone before confirming again.
+- Applies to both Walk Boundary and Draw/Edit Boundary confirmation paths.
+- Existing exclusion geometry is never silently clipped or changed.
 
-- Preferred Level 1 safe-zone area remains 10% of usable playable area per circle.
-- Pre-flight now searches for the largest safe radius that actually fits the selected
-  boundary, exclusions, player start position and difficulty.
-- If the full 10% size does not fit, the radius is reduced in 0.5 m steps until a
-  valid layout is found.
-- Safe zones never go below the existing 10 m minimum diameter.
-- The existing 2 m boundary/exclusion buffer remains unchanged.
-- Safe zones still cannot overlap.
-- Once the fitted Level 1 radius is established, successive levels continue to shrink
-  by 10% in area until the 10 m minimum diameter is reached.
-- The tighter v1.14.8 countdown progression remains unchanged.
+### Floor Is Lava new-high-score announcement
+- When a player exceeds the previous best for the selected difficulty, a clear non-blocking NEW HIGH SCORE message appears in the result panel.
+- Existing Easy / Medium / Hard high-score storage remains separate.
+- Existing score calculation is unchanged.
 
-## Placement robustness
+### High-score reset controls
+- Floor Is Lava setup now shows the stored best for the currently selected difficulty.
+- The parent/player can clear only that selected difficulty's high score.
+- Reset requires explicit confirmation.
+- The visible best updates immediately after a reset.
+- The implementation provides a reusable pattern for future games with stored high scores.
 
-The previous single greedy random placement pass has been replaced with a multi-restart
-layout search. This reduces false 'cannot fit' failures caused by an unlucky sequence
-of random candidate points.
-
-## Regression focus
-
-- The ~2,024 m² irregular test boundary should start Easy Floor Is Lava if three
-  10 m+ safe zones can be safely fitted.
-- A more open boundary should still receive the full preferred 10% Level 1 size.
-- Narrow/irregular areas may start below 10%, but should use the largest feasible size.
-- No zone may overlap another zone, cross the main boundary buffer, or enter an exclusion.
-- Level-to-level shrinkage and countdown progression must remain visible.
-- Existing mode-switch, Challenge Hunt and Hide & Seek behaviours must remain stable.
+## Stable baseline
+v1.14.10
