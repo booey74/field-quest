@@ -1,34 +1,35 @@
-# Field Quest v1.13.2
+# Field Quest v1.14.10
 
-Focused patch built from v1.13.1.
+Release-candidate patch built from v1.14.9.
 
-## Hide & Seek setup numbering
-Challenge Hunt keeps five setup steps.
+## Floor Is Lava adaptive Level 1 safe-zone sizing
 
-Hide & Seek hides the Player & questions section and now renumbers the visible setup:
-1. Define the play area
-2. Game mode
-3. Difficulty
-4. Game settings
+The 10% rule is now a preferred Level 1 target rather than a hard requirement.
 
-There is no longer a visible jump from step 2 to step 4.
+- Preferred Level 1 safe-zone area remains 10% of usable playable area per circle.
+- Pre-flight now searches for the largest safe radius that actually fits the selected
+  boundary, exclusions, player start position and difficulty.
+- If the full 10% size does not fit, the radius is reduced in 0.5 m steps until a
+  valid layout is found.
+- Safe zones never go below the existing 10 m minimum diameter.
+- The existing 2 m boundary/exclusion buffer remains unchanged.
+- Safe zones still cannot overlap.
+- Once the fitted Level 1 radius is established, successive levels continue to shrink
+  by 10% in area until the 10 m minimum diameter is reached.
+- The tighter v1.14.8 countdown progression remains unchanged.
 
-## Medium search-area invalid overlap
-v1.13.1 created the invalid-area map layers but the persistent game-map refresh path
-did not feed them data.
+## Placement robustness
 
-v1.13.2 fixes that refresh path and also changes the geometry so only invalid parts
-of the orange Medium search cell are shaded.
+The previous single greedy random placement pass has been replaced with a multi-restart
+layout search. This reduces false 'cannot fit' failures caused by an unlucky sequence
+of random candidate points.
 
-- Parts of the orange search cell outside the green play boundary are shaded grey.
-- Parts of the orange search cell overlapping exclusion zones are shaded red.
-- Grey/red overlays include dashed outlines for clarity.
-- The orange search cell itself is unchanged.
-- The checkpoint remains hidden.
-- Normal and expanded maps use the same data.
+## Regression focus
 
-## Unchanged
-- Main-boundary warning remains OUTSIDE-only.
-- 2 m inside-clear hysteresis remains.
-- Exclusion-zone warnings retain priority.
-- Challenge Hunt and Hide & Seek game mechanics are otherwise unchanged.
+- The ~2,024 m² irregular test boundary should start Easy Floor Is Lava if three
+  10 m+ safe zones can be safely fitted.
+- A more open boundary should still receive the full preferred 10% Level 1 size.
+- Narrow/irregular areas may start below 10%, but should use the largest feasible size.
+- No zone may overlap another zone, cross the main boundary buffer, or enter an exclusion.
+- Level-to-level shrinkage and countdown progression must remain visible.
+- Existing mode-switch, Challenge Hunt and Hide & Seek behaviours must remain stable.

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Field Quest v1.13.2</title>
+<title>Field Quest v1.14.10</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
@@ -210,17 +210,33 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   color:#ffedd5;
 }
 
+
+.lava-status{
+  margin:12px 0 14px;padding:14px;border-radius:14px;border:2px solid #334155;
+  background:#0f172a;text-align:center
+}
+.lava-status.hidden{display:none}
+.lava-status .lava-phase{font-size:.78rem;font-weight:800;letter-spacing:.08em;color:#cbd5e1}
+.lava-status .lava-main{font-size:1.7rem;font-weight:900;margin-top:3px}
+.lava-status .lava-count{font-size:2.7rem;font-weight:900;line-height:1;margin:7px 0}
+.lava-status .lava-sub{font-size:.9rem;color:#cbd5e1}
+.lava-status.active{border-color:#ef4444;background:#450a0a}
+.lava-status.safe{border-color:#22c55e;background:#052e16}
+.lava-status.failed{border-color:#ef4444;background:#450a0a}
+.lava-status.recovery{border-color:#38bdf8;background:#082f49}
+.lava-settings-note{font-size:.85rem;color:#94a3b8;margin-top:8px}
+
 </style>
 </head>
 <body>
 
 <div id="splash" style="position:fixed;inset:0;z-index:20000;background:#020617;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
   <div style="font-size:2rem;font-weight:900">Field Quest</div>
-  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.13.2</div>
+  <div style="color:#22c55e;font-weight:800;letter-spacing:.08em">v1.14.10</div>
 </div>
 
 <main class="app">
-<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.13.2</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
+<header><div><p class="eyebrow">FIELD QUEST</p><h1>Challenge Hunt</h1></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">v1.14.10</span><span id="gpsBadge" class="badge">GPS waiting</span></div></header>
 
 <section class="card">
 <h2><span id="stepBoundaryNum">1.</span> Define the play area</h2>
@@ -282,7 +298,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   </div>
   <p id="drawBoundaryStatus" class="boundary-help">Tap the map to add points. Drag a numbered point to adjust it before confirming.</p>
 </div>
-<div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
+<div class="stats boundary-stats"><div><span>Boundary points</span><strong id="boundaryCount">0</strong></div><div><span>Usable play area</span><strong id="boundaryArea">—</strong></div><div><span>GPS accuracy</span><strong id="accuracyText">—</strong></div></div>
 <button id="clearBoundaryBtn" class="ghost wide" disabled>Clear boundary</button>
 
 <div class="exclusion-panel">
@@ -329,6 +345,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 <div class="mode-grid game-type-grid">
 <label class="mode-card"><input type="radio" name="gameType" value="challenge" checked><span><strong>Challenge Hunt</strong><small>Find checkpoints, then answer age-appropriate questions.</small></span></label>
 <label class="mode-card"><input type="radio" name="gameType" value="hideSeek"><span><strong>Hide &amp; Seek</strong><small>Find virtual hiders hidden around the play area. No target clues.</small></span></label>
+<label class="mode-card"><input type="radio" name="gameType" value="lava"><span><strong>Floor Is Lava</strong><small>Keep moving, then race to a safe zone when the floor turns to lava.</small></span></label>
 </div>
 </section>
 
@@ -355,9 +372,9 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <section class="card">
 <h2><span id="stepSettingsNum">5.</span> Game settings</h2>
-<label><span id="countLabel">Checkpoints</span><input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
-<label>Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
-<div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
+<label id="countSetting"><span id="countLabel">Checkpoints</span><input id="checkpointCount" type="number" min="1" max="20" value="6"></label>
+<label id="unlockSetting">Unlock radius<select id="unlockRadius"><option value="6">6 m</option><option value="8" selected>8 m</option><option value="10">10 m</option><option value="15">15 m</option></select></label>
+<p id="lavaSettingsNote" class="lava-settings-note hidden">Endless game • 3 safe zones on Easy, 2 on Medium, 1 on Hard • minimum usable area 2,000 m².</p><div id="gameStartStatus" class="game-start-status waiting">GPS required before the game can start.</div>
 <div class="game-start-gps-row">
   <button id="gameStartGpsBtn" class="primary">Start GPS</button>
 </div>
@@ -366,6 +383,12 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 
 <section class="card hidden" id="gameCard">
 <div class="game-head"><div><p class="eyebrow" id="checkpointEyebrow">NEXT CHECKPOINT</p><h2 id="checkpointLabel">Checkpoint 1</h2></div><div class="score" id="scoreText">0 / 0</div></div>
+<div id="lavaStatus" class="lava-status hidden" aria-live="polite">
+  <div id="lavaPhase" class="lava-phase">GET READY</div>
+  <div id="lavaMain" class="lava-main">MOVE AROUND THE PLAY AREA</div>
+  <div id="lavaCountdown" class="lava-count">—</div>
+  <div id="lavaSub" class="lava-sub">Safe zones will appear before the floor becomes lava.</div>
+</div>
 <div id="exclusionSafetyAlert" class="safety-alert hidden" role="alert" aria-live="assertive">
   <strong id="exclusionSafetyTitle">CAUTION</strong>
   <span id="exclusionSafetyText">Exclusion zone nearby. Keep clear of the marked area.</span>
@@ -422,7 +445,7 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
   <span id="fullBoundarySafetyText">You are outside the defined play area. Move back inside the green boundary.</span>
 </div>
   <div class="full-controls"><button id="recenterFullBtn" class="ghost">Re-centre</button></div>
-  <div class="hud bottom-hud"><div><span class="hud-label">DISTANCE</span><strong id="hudDistance">—</strong></div><div id="hudHint" class="hud-hint">Follow the pin</div></div>
+  <div class="hud bottom-hud"><div><span class="hud-label" id="hudDistanceLabel">DISTANCE</span><strong id="hudDistance">—</strong></div><div id="hudHint" class="hud-hint">Follow the pin</div></div>
 </div>
 
 
@@ -434,7 +457,9 @@ input[type=number],select{width:100%;border:1px solid var(--line);background:#0b
 const S={
  currentPos:null,prevPos:null,boundary:[],checkpoints:[],currentIndex:0,score:0,unlocked:false,firstDistance:null,lastDistance:null,
  setupMap:null,gameMap:null,fullMap:null,setupPlayer:null,gamePlayer:null,fullPlayer:null,boundaryMarkers:[],
- gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,boundaryWarningLevel:"safe",boundaryWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,hideSeekCompleted:false
+ gameType:"challenge",navMode:"easy",mapMode:"north",smoothHeading:null,hasReliableHeading:false,gameTargetMarker:null,fullTargetMarker:null,followSetup:true,followGame:true,followFull:true,boundaryMode:"walk",boundaryConfirmed:false,savedBoundaries:[],loadedSavedBoundaryId:null,exclusionZones:[],exclusionDrawing:false,exclusionDraft:[],editingExclusionId:null,exclusionMarkers:[],exclusionWarningLevel:"safe",exclusionWarningZoneId:null,exclusionWarningLastVibrate:0,boundaryWarningLevel:"safe",boundaryWarningLastVibrate:0,trailPoints:[],lastTrailPointAt:0,hideSeekNoticeTimer:null,hideSeekCompleted:false,
+ lavaPhase:"idle",lavaLevel:0,lavaZones:[],lavaRadius:5,lavaStartRadius:5,lavaTimer:null,lavaDeadline:0,
+ lavaLastPulseSecond:null,lavaHighScores:{easy:0,medium:0,hard:0},lavaCompleted:0,lavaInSafe:false,lavaSafeIndex:-1
 };
 
 const Q=[
@@ -477,32 +502,87 @@ const mode=()=>document.querySelector('input[name="navMode"]:checked').value;
 
 const gameType=()=>document.querySelector('input[name="gameType"]:checked').value;
 const isHideSeek=()=>S.gameType==="hideSeek";
+const isLava=()=>S.gameType==="lava";
 
 
 function refreshSetupStepNumbers(){
- const hide=isHideSeek();
+ const compact=isHideSeek()||isLava();
  if($("stepBoundaryNum"))$("stepBoundaryNum").textContent="1.";
  if($("stepGameModeNum"))$("stepGameModeNum").textContent="2.";
  if($("stepPlayerQuestionsNum"))$("stepPlayerQuestionsNum").textContent="3.";
- if($("stepDifficultyNum"))$("stepDifficultyNum").textContent=hide?"3.":"4.";
- if($("stepSettingsNum"))$("stepSettingsNum").textContent=hide?"4.":"5.";
+ if($("stepDifficultyNum"))$("stepDifficultyNum").textContent=compact?"3.":"4.";
+ if($("stepSettingsNum"))$("stepSettingsNum").textContent=compact?"4.":"5.";
+}
+
+
+function resetActiveGameForModeSwitch(){
+ if(S.lavaTimer||S.lavaPhase!=="idle")stopLavaGame();
+
+ S.hideSeekCompleted=false;
+ S.checkpoints=[];
+ S.trailPoints=[];
+ S.lastTrailPointAt=0;
+ S.score=0;
+ S.currentIndex=0;
+ S.unlocked=false;
+ S.firstDistance=null;
+ S.lastDistance=null;
+
+ if($("gameCard"))$("gameCard").classList.add("hidden");
+ if($("challengePanel"))$("challengePanel").classList.add("hidden");
+ if($("hardNavPanel"))$("hardNavPanel").classList.add("hidden");
+ if($("zoneText")){
+   $("zoneText").textContent="";
+   $("zoneText").classList.add("hidden");
+ }
+ if($("feedback"))$("feedback").textContent="";
+ if($("answerOptions"))$("answerOptions").innerHTML="";
+
+ for(const key of ["gameTargetMarker","fullTargetMarker","gameTarget","fullTarget"]){
+   if(S[key]){
+     try{S[key].remove()}catch(e){}
+     S[key]=null;
+   }
+ }
+
+ const empty={type:"FeatureCollection",features:[]};
+ for(const map of [S.gameMap,S.fullMap]){
+   if(!map||!map.isStyleLoaded())continue;
+   for(const sourceId of ["search-trail","found-hiders","grid","medium-outside","medium-invalid-exclusions","lava-zones"]){
+     const source=map.getSource(sourceId);
+     if(source)try{source.setData(empty)}catch(e){}
+   }
+ }
+
+ resetExclusionWarning();
+ resetBoundaryWarning();
 }
 
 function refreshGameTypeUi(){
  S.gameType=gameType();
- const hide=isHideSeek();
+ const hide=isHideSeek(),lava=isLava(),compact=hide||lava;
  refreshSetupStepNumbers();
- $("questionSetupCard").classList.toggle("hidden",hide);
- $("countLabel").textContent=hide?"Hiders":"Checkpoints";
- $("generateBtn").textContent=hide?"Start Hide & Seek":"Generate game";
+ $("questionSetupCard").classList.toggle("hidden",compact);
+ $("countSetting").classList.toggle("hidden",lava);
+ $("unlockSetting").classList.toggle("hidden",lava);
+ $("lavaSettingsNote").classList.toggle("hidden",!lava);
 
- if(hide){
+ if(lava){
+   $("generateBtn").textContent="Start Floor Is Lava";
+   $("easyModeText").textContent="3 safe zones each level. Largest margin for error.";
+   $("mediumModeText").textContent="2 safe zones each level. Less choice and tighter timing.";
+   $("hardModeText").textContent="1 safe zone each level. Smallest margin for error.";
+ }else if(hide){
+   $("countLabel").textContent="Hiders";
+   $("generateBtn").textContent="Start Hide & Seek";
    $("easyModeText").textContent="Full search trail shows everywhere you have already explored.";
    $("mediumModeText").textContent="Only your recent search trail is shown.";
    $("hardModeText").textContent="No search trail — remember where you have already looked.";
    $("checkpointCount").max="12";
    if(+$("checkpointCount").value>12)$("checkpointCount").value=6;
  }else{
+   $("countLabel").textContent="Checkpoints";
+   $("generateBtn").textContent="Generate game";
    $("easyModeText").textContent="Exact checkpoint pin, child marker and distance.";
    $("mediumModeText").textContent="Highlighted search area, exact checkpoint hidden. Grey/red areas are outside valid play space.";
    $("hardModeText").textContent="No map. Compass direction and distance.";
@@ -543,6 +623,335 @@ function segDist(p,a,b){const r=rad((a.lat+b.lat+p.lat)/3),mx=111320*Math.cos(r)
 function edgeDist(p,poly){let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,segDist(p,poly[i],poly[(i+1)%poly.length]));return best}
 function exclusionEdgeDist(p){let best=Infinity;for(const z of (S.exclusionZones||[])){if(!z.points||z.points.length<3)continue;best=Math.min(best,edgeDist(p,z.points))}return best}
 
+
+
+const LAVA_HIGHSCORE_KEY="fieldQuestLavaHighScoresV1";
+const LAVA_MIN_USABLE_AREA=2000;
+const LAVA_START_ZONE_SHARE=0.10;
+const LAVA_MIN_DIAMETER=10;
+const LAVA_EDGE_BUFFER=2;
+const LAVA_PRECOUNTDOWN=5;
+
+function polygonAreaM2(poly){
+ if(!poly||poly.length<3)return 0;
+ const lat0=poly.reduce((s,p)=>s+p.lat,0)/poly.length;
+ const mx=111320*Math.cos(rad(lat0)),my=110540;
+ let a=0;
+ for(let i=0;i<poly.length;i++){
+   const p=poly[i],q=poly[(i+1)%poly.length];
+   a+=(p.lon*mx)*(q.lat*my)-(q.lon*mx)*(p.lat*my);
+ }
+ return Math.abs(a)/2;
+}
+function usablePlayableArea(){
+ let a=polygonAreaM2(S.boundary);
+ for(const z of (S.exclusionZones||[]))a-=polygonAreaM2(z.points||[]);
+ return Math.max(0,a);
+}
+function lavaZoneCount(){
+ return S.navMode==="easy"?3:S.navMode==="medium"?2:1;
+}
+function lavaPreferredStartRadius(){
+ const usable=usablePlayableArea();
+ return Math.max(LAVA_MIN_DIAMETER/2,Math.sqrt((usable*LAVA_START_ZONE_SHARE)/Math.PI));
+}
+function lavaZoneRadiusForLevel(level){
+ const start=Math.max(LAVA_MIN_DIAMETER/2,S.lavaStartRadius||lavaPreferredStartRadius());
+ const shrink=Math.sqrt(Math.pow(0.90,Math.max(0,level-1)));
+ return Math.max(LAVA_MIN_DIAMETER/2,start*shrink);
+}
+function circleRing(center,radius,steps=40){
+ const ring=[];
+ const latScale=110540,lonScale=111320*Math.cos(rad(center.lat));
+ for(let i=0;i<=steps;i++){
+   const a=2*Math.PI*i/steps;
+   ring.push([center.lon+(Math.cos(a)*radius)/lonScale,center.lat+(Math.sin(a)*radius)/latScale]);
+ }
+ return ring;
+}
+function pointFromRing(x){return{lon:x[0],lat:x[1]}}
+function zoneFullyValid(p,r){
+ if(!inside(p,S.boundary)||pointInAnyExclusion(p))return false;
+ if(edgeDist(p,S.boundary)<r+LAVA_EDGE_BUFFER)return false;
+ if(S.exclusionZones.length && exclusionEdgeDist(p)<r+LAVA_EDGE_BUFFER)return false;
+ return true;
+}
+function lavaZonesGeo(){
+ return{type:"FeatureCollection",features:(S.lavaZones||[]).map((z,i)=>({
+   type:"Feature",properties:{id:i+1,currentSafe:(S.lavaInSafe&&S.lavaSafeIndex===i)?1:0},
+   geometry:{type:"Polygon",coordinates:[circleRing(z,S.lavaRadius)]}
+ }))};
+}
+function lavaFloorGeo(){
+ if(!isLava()||S.lavaPhase!=="resolve"||S.boundary.length<3)return emptyGeo();
+ const outer=S.boundary.map(p=>[p.lon,p.lat]);outer.push([...outer[0]]);
+ const holes=[];
+ for(const z of (S.exclusionZones||[])){
+   if(z.points&&z.points.length>=3){
+     const h=z.points.map(p=>[p.lon,p.lat]);h.push([...h[0]]);holes.push(h);
+   }
+ }
+ for(const z of (S.lavaZones||[]))holes.push(circleRing(z,S.lavaRadius));
+ return{type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[outer,...holes]}}]};
+}
+function loadLavaHighScores(){
+ try{
+   const v=JSON.parse(localStorage.getItem(LAVA_HIGHSCORE_KEY)||"{}");
+   S.lavaHighScores={easy:+v.easy||0,medium:+v.medium||0,hard:+v.hard||0};
+ }catch(e){S.lavaHighScores={easy:0,medium:0,hard:0}}
+}
+function saveLavaHighScores(){
+ try{localStorage.setItem(LAVA_HIGHSCORE_KEY,JSON.stringify(S.lavaHighScores))}catch(e){}
+}
+function lavaHighScore(){return S.lavaHighScores[S.navMode]||0}
+function setLavaUi(kind,main,count,sub){
+ const panel=$("lavaStatus");
+ panel.classList.remove("hidden","active","safe","failed","recovery");
+ if(kind)panel.classList.add(kind);
+ $("lavaPhase").textContent=
+   kind==="safe"?"SAFE":
+   kind==="failed"?"GAME OVER":
+   S.lavaPhase==="resolve"?"FLOOR IS LAVA":
+   S.lavaPhase==="free"?"FREE MOVEMENT":"FLOOR IS LAVA IN";
+ $("lavaMain").textContent=main;
+ $("lavaCountdown").textContent=count==null?"—":count;
+ $("lavaSub").textContent=sub||"";
+ $("checkpointEyebrow").textContent="FLOOR IS LAVA";
+ $("checkpointLabel").textContent=`Level ${Math.max(1,S.lavaLevel)}`;
+ $("scoreText").textContent=`Best ${lavaHighScore()}`;
+ hud();
+}
+function lavaPulse(sec){
+ if(sec<1||sec>5||S.lavaLastPulseSecond===sec)return;
+ S.lavaLastPulseSecond=sec;
+ if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
+}
+function clearLavaTimer(){
+ if(S.lavaTimer){clearInterval(S.lavaTimer);S.lavaTimer=null}
+ S.lavaLastPulseSecond=null;
+}
+function refreshLavaMaps(){
+ for(const map of [S.gameMap,S.fullMap]){
+   if(map&&map.isStyleLoaded())ensurePersistentBoundary(map);
+ }
+ hud();
+}
+function lavaMinPlayerDistance(level){
+ const diagM=Math.max(1,diag(S.boundary));
+ return Math.min(Math.max(10,diagM*(0.12+Math.min(level,20)*0.006)),diagM*0.42);
+}
+function findLavaZoneLayout(r,level,restarts=24,candidatesPerZone=220){
+ const count=lavaZoneCount(),player=S.currentPos,minPlayerDistance=lavaMinPlayerDistance(level);
+ for(let restart=0;restart<restarts;restart++){
+   const zones=[];
+   let failed=false;
+   for(let i=0;i<count;i++){
+     let chosen=null;
+     for(let attempt=0;attempt<candidatesPerZone;attempt++){
+       const p=randomPoint(S.boundary);
+       if(!zoneFullyValid(p,r))continue;
+       if(player&&dist(player,p)<minPlayerDistance)continue;
+       let ok=true;
+       for(const other of zones)if(dist(other,p)<2*r){ok=false;break}
+       if(!ok)continue;
+       chosen=p;break;
+     }
+     if(!chosen){failed=true;break}
+     zones.push(chosen);
+   }
+   if(!failed&&zones.length===count)return zones;
+ }
+ return null;
+}
+function findLargestLavaStartRadius(){
+ const minR=LAVA_MIN_DIAMETER/2;
+ const preferred=lavaPreferredStartRadius();
+ if(preferred<=minR)return findLavaZoneLayout(minR,1)?minR:null;
+
+ // Search from the preferred 10%-of-area size downward in 0.5 m radius steps.
+ // This makes 10% a target rather than a hard requirement for awkward shapes.
+ for(let r=preferred;r>minR;r-=0.5){
+   if(findLavaZoneLayout(r,1))return r;
+ }
+ return findLavaZoneLayout(minR,1)?minR:null;
+}
+function generateLavaZones(){
+ let r=lavaZoneRadiusForLevel(S.lavaLevel);
+ const minR=LAVA_MIN_DIAMETER/2;
+
+ // Normally the pre-flight start radius means this succeeds immediately.
+ // If player position / later-level spacing makes the target radius awkward,
+ // allow a small downward fit adjustment, never below the 10 m diameter floor.
+ while(r>=minR-0.001){
+   const zones=findLavaZoneLayout(r,S.lavaLevel,28,240);
+   if(zones){
+     S.lavaRadius=r;S.lavaZones=zones;
+     return;
+   }
+   if(r<=minR+0.001)break;
+   r=Math.max(minR,r-0.5);
+ }
+ throw Error("This play area cannot fit the required safe zones at this level.");
+}
+function lavaTravelTimeSeconds(){
+ const nearest=Math.min(...S.lavaZones.map(z=>dist(S.currentPos,z)));
+ const cfg=S.navMode==="easy"?{speed:1.7,margin:8}:S.navMode==="medium"?{speed:1.9,margin:6}:{speed:2.1,margin:4};
+ const pressure=Math.pow(0.94,Math.max(0,S.lavaLevel-1));
+ return Math.max(2,Math.ceil((nearest/cfg.speed+cfg.margin)*pressure));
+}
+
+function beginLavaFreeMove(){
+ clearLavaTimer();
+ S.lavaPhase="free";
+ S.lavaZones=[];S.lavaInSafe=false;S.lavaSafeIndex=-1;
+ S.lavaDeadline=Date.now()+6000;
+ setLavaUi("recovery","MOVE AROUND THE PLAY AREA",6,"The next safe zones are hidden. Keep moving until the countdown begins.");
+ refreshLavaMaps();
+
+ S.lavaTimer=setInterval(()=>{
+   const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
+   $("lavaCountdown").textContent=sec;
+   // No vibration during free movement countdown.
+   hud();
+   if(sec<=0){
+     clearLavaTimer();
+     beginLavaPreCountdown();
+   }
+ },200);
+}
+
+function beginLavaPreCountdown(){
+ clearLavaTimer();
+ S.lavaPhase="precountdown";
+ S.lavaLevel++;
+ try{generateLavaZones()}catch(e){
+   S.lavaLevel--;
+   endLavaGame(false,e.message||"Could not create a fair next level.");
+   return;
+ }
+
+ const secs=lavaTravelTimeSeconds();
+ S.lavaDeadline=Date.now()+secs*1000;
+ S.lavaLastPulseSecond=null;
+ S.lavaInSafe=false;S.lavaSafeIndex=-1;
+ setLavaUi(
+   "recovery",
+   "GET TO A SAFE ZONE!",
+   secs,
+   `${lavaZoneCount()} safe zone${lavaZoneCount()===1?"":"s"} • ${Math.round(S.lavaRadius*2)} m diameter`
+ );
+ refreshLavaMaps();
+
+ S.lavaTimer=setInterval(()=>{
+   const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
+   $("lavaCountdown").textContent=sec;
+   lavaPulse(sec);
+   updateLavaPosition();
+   hud();
+   if(sec<=0){
+     clearLavaTimer();
+     resolveLavaCountdown();
+   }
+ },200);
+}
+function resolveLavaCountdown(){
+ clearLavaTimer();
+ S.lavaPhase="resolve";
+
+ let hit=-1;
+ if(S.currentPos){
+   for(let i=0;i<S.lavaZones.length;i++){
+     if(dist(S.currentPos,S.lavaZones[i])<=S.lavaRadius){hit=i;break}
+   }
+ }
+ S.lavaInSafe=hit>=0;
+ S.lavaSafeIndex=hit;
+
+ refreshLavaMaps();
+
+ if(S.lavaInSafe)completeLavaLevel();
+ else endLavaGame(false,"The floor became lava before you reached a safe zone.");
+}
+
+function updateLavaPosition(){
+ if(!isLava()||S.lavaPhase!=="precountdown"||!S.currentPos)return;
+
+ let hit=-1;
+ for(let i=0;i<S.lavaZones.length;i++){
+   if(dist(S.currentPos,S.lavaZones[i])<=S.lavaRadius){hit=i;break}
+ }
+ const inSafe=hit>=0;
+
+ if(inSafe!==S.lavaInSafe || hit!==S.lavaSafeIndex){
+   S.lavaInSafe=inSafe;
+   S.lavaSafeIndex=hit;
+   const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
+
+   if(inSafe){
+     setLavaUi("safe","SAFE ZONE REACHED",sec,"Stay inside the green safe zone until the countdown reaches zero.");
+   }else{
+     setLavaUi("recovery","GET TO A SAFE ZONE!",sec,`${lavaZoneCount()} safe zone${lavaZoneCount()===1?"":"s"} • ${Math.round(S.lavaRadius*2)} m diameter`);
+   }
+   refreshLavaMaps();
+ }
+}
+function completeLavaLevel(){
+ if(S.lavaPhase!=="resolve")return;
+ clearLavaTimer();
+ S.lavaCompleted=S.lavaLevel;
+
+ if(S.lavaCompleted>lavaHighScore()){
+   S.lavaHighScores[S.navMode]=S.lavaCompleted;
+   saveLavaHighScores();
+ }
+ if(navigator.vibrate)try{navigator.vibrate([120,80,120])}catch(e){}
+
+ setLavaUi("safe","YOU'RE SAFE!","✓",`Level ${S.lavaLevel} complete • High score ${lavaHighScore()}`);
+ refreshLavaMaps();
+
+ setTimeout(()=>{
+   if(!isLava()||S.lavaPhase!=="resolve")return;
+   S.lavaPhase="safe";
+   S.lavaInSafe=false;S.lavaSafeIndex=-1;
+   refreshLavaMaps();
+   beginLavaFreeMove();
+ },5000);
+}
+function endLavaGame(success,msg){
+ clearLavaTimer();
+ S.lavaPhase="resolve";
+ refreshLavaMaps();
+ if(navigator.vibrate)try{navigator.vibrate([350,120,350])}catch(e){}
+ setLavaUi("failed","GAME OVER","×",`${msg||"The lava got you."} • Levels completed ${S.lavaCompleted} • High score ${lavaHighScore()}`);
+}
+function startLavaGame(){
+ const usable=usablePlayableArea();
+ if(usable<LAVA_MIN_USABLE_AREA){
+   alert(`Floor Is Lava needs at least ${LAVA_MIN_USABLE_AREA.toLocaleString()} m² of usable play area. This area has about ${Math.round(usable).toLocaleString()} m² after exclusions.`);
+   return false;
+ }
+ S.lavaLevel=0;S.lavaCompleted=0;S.lavaZones=[];S.lavaRadius=LAVA_MIN_DIAMETER/2;S.lavaStartRadius=LAVA_MIN_DIAMETER/2;S.lavaPhase="idle";
+ loadLavaHighScores();
+
+ // 10% of usable area is the preferred Level 1 size.
+ // For narrower / irregular boundaries, automatically use the largest
+ // safe radius that actually fits the selected difficulty and current start.
+ const fitted=findLargestLavaStartRadius();
+ if(fitted==null){
+   S.lavaLevel=0;S.lavaZones=[];S.lavaStartRadius=LAVA_MIN_DIAMETER/2;
+   alert("This play area is large enough by area, but its shape/exclusion zones cannot fit the required safe zones safely even at the 10 m minimum diameter.");
+   return false;
+ }
+ S.lavaStartRadius=fitted;
+ S.lavaRadius=fitted;
+ S.lavaLevel=0;S.lavaZones=[];
+ return true;
+}
+function stopLavaGame(){
+ clearLavaTimer();S.lavaPhase="idle";S.lavaZones=[];S.lavaInSafe=false;S.lavaSafeIndex=-1;S.lavaLevel=0;S.lavaCompleted=0;S.lavaStartRadius=LAVA_MIN_DIAMETER/2;
+ if($("lavaStatus"))$("lavaStatus").classList.add("hidden");
+ refreshLavaMaps();
+}
 
 function activeGameForSafetyWarnings(){
  const card=$("gameCard");
@@ -914,7 +1323,9 @@ function polygonAreaM2(poly){
 }
 function updateBoundaryArea(){
  const el=$("boundaryArea");if(!el)return;
- const a=polygonAreaM2(S.boundary);
+ let a=polygonAreaM2(S.boundary);
+ for(const z of (S.exclusionZones||[]))a-=polygonAreaM2(z.points||[]);
+ a=Math.max(0,a);
  el.textContent=a>0?`${Math.round(a).toLocaleString()} m²`:"—";
 }
 
@@ -971,7 +1382,7 @@ function clipPolyToRect(points,rect){
 }
 
 function mediumOutsideGeo(t){
- if(isHideSeek()||S.navMode!=="medium"||!t||S.boundary.length<3)return emptyGeo();
+ if(isHideSeek()||isLava()||S.navMode!=="medium"||!t||S.boundary.length<3)return emptyGeo();
  const g=gridBounds(t);
  const valid=clipPolyToRect(S.boundary,g);
  if(valid.length<3)return{
@@ -993,7 +1404,7 @@ function mediumOutsideGeo(t){
 }
 
 function mediumInvalidExclusionsGeo(t){
- if(isHideSeek()||S.navMode!=="medium"||!t)return emptyGeo();
+ if(isHideSeek()||isLava()||S.navMode!=="medium"||!t)return emptyGeo();
  const g=gridBounds(t),features=[];
  for(const z of (S.exclusionZones||[])){
    if(!z.points||z.points.length<3)continue;
@@ -1726,6 +2137,16 @@ function ensureGameSources(map){
    map.addSource("exclusion-draft",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
    map.addLayer({id:"exclusion-draft-line",type:"line",source:"exclusion-draft",paint:{"line-color":"#ef4444","line-width":3}});
  }
+
+ if(!map.getSource("lava-floor")){
+   map.addSource("lava-floor",{type:"geojson",data:emptyGeo()});
+   map.addLayer({id:"lava-floor-fill",type:"fill",source:"lava-floor",paint:{"fill-color":"#ef4444","fill-opacity":0.68}});
+ }
+ if(!map.getSource("lava-zones")){
+   map.addSource("lava-zones",{type:"geojson",data:emptyGeo()});
+   map.addLayer({id:"lava-zones-fill",type:"fill",source:"lava-zones",paint:{"fill-color":["case",["==",["get","currentSafe"],1],"#4ade80","#22c55e"],"fill-opacity":["case",["==",["get","currentSafe"],1],0.82,0.58]}});
+   map.addLayer({id:"lava-zones-line",type:"line",source:"lava-zones",paint:{"line-color":["case",["==",["get","currentSafe"],1],"#dcfce7","#16a34a"],"line-width":["case",["==",["get","currentSafe"],1],7,4]}});
+ }
  return true;
 }
 
@@ -1736,7 +2157,7 @@ function ensurePermanentTargetMarker(map,prefix){
  const key=prefix==="game"?"gameTargetMarker":"fullTargetMarker";
  const target=(S.checkpoints&&S.checkpoints[S.currentIndex])||null;
 
- if(!target || isHideSeek() || S.navMode!=="easy"){
+ if(!target || isHideSeek() || isLava() || S.navMode!=="easy"){
    if(S[key]) S[key].getElement().style.display="none";
    updateDiagnostics();
    return;
@@ -1771,6 +2192,11 @@ function ensurePersistentBoundary(map){
  if(map.getSource("medium-invalid-exclusions"))map.getSource("medium-invalid-exclusions").setData(mediumInvalidExclusionsGeo(target));
  if(map.getSource("search-trail"))map.getSource("search-trail").setData(trailGeo());
  if(map.getSource("found-hiders"))map.getSource("found-hiders").setData(foundHidersGeo());
+ if(map.getSource("lava-floor"))map.getSource("lava-floor").setData(lavaFloorGeo());
+ if(map.getSource("lava-zones"))map.getSource("lava-zones").setData(
+   isLava()&&(S.lavaPhase==="precountdown"||S.lavaPhase==="resolve")?lavaZonesGeo():emptyGeo()
+ );
+ if(isLava()&&map.getSource("grid"))map.getSource("grid").setData(emptyGeo());
  return true;
 }
 
@@ -1861,6 +2287,31 @@ function generate(){
  resetExclusionWarning();
  resetBoundaryWarning();
 
+ if(isLava()){
+   stopLavaGame();
+   if(!startLavaGame())return;
+   S.checkpoints=[{lat:S.currentPos.lat,lon:S.currentPos.lon,lava:true}];
+   S.currentIndex=0;S.score=0;S.unlocked=false;S.firstDistance=null;S.lastDistance=null;
+   $("checkpointEyebrow").textContent="FLOOR IS LAVA";
+   $("checkpointLabel").textContent="Level 1";
+   $("scoreText").textContent=`Best ${lavaHighScore()}`;
+   $("hardNavPanel").classList.add("hidden");
+   $("gameMapWrap").classList.remove("hidden");
+   $("challengePanel").classList.add("hidden");
+   $("distanceText").textContent="🔥";
+   $("bearingText").textContent="Keep moving until the countdown begins.";
+   $("zoneText").classList.add("hidden");
+   $("progressBar").style.width="0%";
+   $("gameCard").classList.remove("hidden");
+
+   if(!S.gameMap)S.gameMap=createGameMap("gameMap");
+   else{syncMapState(S.gameMap,"game");fitBoundary(S.gameMap)}
+   updatePlayers();refreshLavaMaps();beginLavaFreeMove();
+   updateExclusionSafetyWarning();updateBoundarySafetyWarning();applyTravelBearing();
+   setTimeout(()=>$("gameCard").scrollIntoView({behavior:"smooth"}),100);
+   return;
+ }
+
  let count=Math.max(1,Math.min(isHideSeek()?12:20,+$("checkpointCount").value||6));
 
  if(isHideSeek()){
@@ -1940,6 +2391,7 @@ function generate(){
 }
 
 function updateHardCompass(){
+ if(isLava()){if($("hardNavPanel"))$("hardNavPanel").classList.add("hidden");return;}
  const panel=$("hardNavPanel");
  if(isHideSeek()||S.navMode!=="hard"||!S.currentPos||S.currentIndex>=S.checkpoints.length){
    if(panel&&S.navMode==="hard"&&S.currentIndex>=S.checkpoints.length)panel.classList.add("hidden");
@@ -1963,6 +2415,13 @@ function updateHardCompass(){
 }
 function updateGameUI(){refreshTravelUpAvailability();
  let n=S.checkpoints.length;
+ if(isLava()){
+   $("challengePanel").classList.add("hidden");
+   $("answerOptions").innerHTML="";$("feedback").textContent="";
+   $("hardNavPanel").classList.add("hidden");
+   $("gameMapWrap").classList.remove("hidden");
+   return;
+ }
  if(isHideSeek()){
    let found=hideSeekFoundCount(),remaining=n-found;
    $("checkpointEyebrow").textContent=remaining?"HIDERS REMAINING":"ALL FOUND";
@@ -2025,6 +2484,7 @@ function enterCompletedGameState(){
 
 function updateGame(){
  if(!S.currentPos||!S.checkpoints.length)return;
+ if(isLava()){updateLavaPosition();return}
  if(isHideSeek()){updateHideSeekGame();return}
  if(S.currentIndex>=S.checkpoints.length)return;
  let t=S.checkpoints[S.currentIndex],d=dist(S.currentPos,t),r=+$("unlockRadius").value;
@@ -2037,6 +2497,33 @@ function updateGame(){
  S.lastDistance=d;hud(d);updateHardCompass();if(d<=r&&!S.unlocked)unlock();
 }
 function hud(d=S.lastDistance){
+ if(isLava()){
+   $("hudTopLabel").textContent=S.lavaPhase==="resolve"?"FLOOR IS LAVA":"LEVEL";
+   $("hudCheckpoint").textContent=`Level ${Math.max(1,S.lavaLevel)} • Best ${lavaHighScore()}`;
+
+   if($("hudDistanceLabel")){
+     $("hudDistanceLabel").textContent=
+       (S.lavaPhase==="precountdown"||S.lavaPhase==="free")?"TIME":"STATUS";
+   }
+
+   if(S.lavaPhase==="precountdown"||S.lavaPhase==="free"){
+     const sec=Math.max(0,Math.ceil((S.lavaDeadline-Date.now())/1000));
+     $("hudDistance").textContent=`${sec}s`;
+   }else if(S.lavaPhase==="resolve"){
+     $("hudDistance").textContent=S.lavaInSafe?"SAFE":"GAME OVER";
+   }else if(S.lavaPhase==="safe"){
+     $("hudDistance").textContent="SAFE";
+   }else{
+     $("hudDistance").textContent="—";
+   }
+
+   $("hudHint").textContent=
+     S.lavaPhase==="precountdown"?(S.lavaInSafe?"SAFE ZONE REACHED — STAY PUT":"GET TO GREEN!"):
+     S.lavaPhase==="safe"?"YOU'RE SAFE!":
+     S.lavaPhase==="resolve"?(S.lavaInSafe?"YOU'RE SAFE!":"GAME OVER"):
+     "Move around — safe zones hidden";
+   return;
+ }
  if(isHideSeek()){
    const found=hideSeekFoundCount(),total=S.checkpoints.length,remaining=total-found;
    $("hudTopLabel").textContent=remaining?"HIDERS REMAINING":"HIDERS";
@@ -2085,7 +2572,7 @@ function refreshFullMapState(){
  setTimeout(()=>{S.fullMap.resize();redraw()},180);
 }
 function openFull(){
- if(!isHideSeek()&&S.navMode==="hard")return;
+ if(!isHideSeek()&&!isLava()&&S.navMode==="hard")return;
  $("fullscreenMapModal").classList.remove("hidden");
  requestAnimationFrame(()=>{
    requestAnimationFrame(()=>{
@@ -2170,7 +2657,10 @@ $("expandedUndoWalkPointBtn").onclick=undoWalkBoundaryPoint;
 $("expandedConfirmWalkBoundaryBtn").onclick=confirmWalkBoundary;
 $("expandedUndoBoundaryBtn").onclick=undoBoundaryPoint;
 $("expandedConfirmBoundaryBtn").onclick=confirmDrawBoundary;
-document.querySelectorAll('input[name="gameType"]').forEach(el=>el.onchange=refreshGameTypeUi);
+document.querySelectorAll('input[name="gameType"]').forEach(el=>el.onchange=()=>{
+ resetActiveGameForModeSwitch();
+ refreshGameTypeUi();
+});
 $("generateBtn").onclick=generate;
 $("expandMapBtn").onclick=openFull;
 $("closeMapBtn").onclick=closeFull;
@@ -2179,18 +2669,10 @@ $("recenterFullBtn").onclick=()=>enableFollow(S.fullMap);
 $("northUpBtn").onclick=()=>setMapMode("north");
 $("travelUpBtn").onclick=()=>setMapMode("travel");
 $("endGameBtn").onclick=()=>{
- $("gameCard").classList.add("hidden");
- S.hideSeekCompleted=false;
- S.checkpoints=[];S.trailPoints=[];S.score=0;S.currentIndex=0;
- if(S.gameMap&&S.gameMap.isStyleLoaded()&&S.gameMap.getSource("search-trail"))S.gameMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
- if(S.fullMap&&S.fullMap.isStyleLoaded()&&S.fullMap.getSource("search-trail"))S.fullMap.getSource("search-trail").setData({type:"FeatureCollection",features:[]});
- for(const map of [S.gameMap,S.fullMap]){
-   if(map&&map.isStyleLoaded()&&map.getSource("found-hiders"))map.getSource("found-hiders").setData({type:"FeatureCollection",features:[]});
- }
- resetExclusionWarning();
+ resetActiveGameForModeSwitch();
 };
 
-ensureSetupMap();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();refreshGameTypeUi();
+ensureSetupMap();loadLavaHighScores();loadSavedBoundariesFromStorage();renderExclusionList();refreshBoundaryControls();refreshGpsUi();refreshGameTypeUi();
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.style.display="none"},900);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));
 </script>
