@@ -1,13 +1,10 @@
-# Field Quest v1.15.2
+# Field Quest v1.15.3
 
-Focused visual patch built from v1.15.1.
+Focused UI correction built from v1.15.2.
 
-## Change
-- Expanded-map Re-centre button now uses a solid dark background, stronger light border and drop shadow.
-- This is intended to keep the control clearly readable over both pale and dark map tiles.
-- No gameplay, scoring, GPS, map-follow, boundary, exclusion-zone or high-score behaviour changes.
+## Fix
+- Corrects the CSS selector used for the expanded-map Re-centre button.
+- The actual button ID is `recenterFullBtn`; v1.15.2 mistakenly targeted `fullRecenterBtn`.
+- The intended solid dark background, light border and shadow now apply to the real expanded Re-centre control.
 
-## v1.15 scope remains unchanged
-- Boundary edit vs exclusion-zone consistency
-- Floor Is Lava new-high-score announcement
-- Per-difficulty high-score reset controls
+No gameplay, scoring, GPS, navigation, boundary, exclusion-zone or high-score logic changes.
