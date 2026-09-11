@@ -1,10 +1,13 @@
-# Field Quest v1.15.3
+# Field Quest v1.15.4
 
-Focused UI correction built from v1.15.2.
+Focused Floor Is Lava rendering patch built from v1.15.3.
 
 ## Fix
-- Corrects the CSS selector used for the expanded-map Re-centre button.
-- The actual button ID is `recenterFullBtn`; v1.15.2 mistakenly targeted `fullRecenterBtn`.
-- The intended solid dark background, light border and shadow now apply to the real expanded Re-centre control.
+- Safe-zone circles must appear as soon as the pre-lava countdown begins.
+- The floor must remain normal during that countdown.
+- At zero, the floor turns red and pass/fail is judged immediately.
+- Map refresh now uses the shared map-state synchronisation path for both normal and expanded maps.
+- This avoids missing the safe-zone render when MapLibre is not fully style-ready at the exact transition into pre-countdown.
 
-No gameplay, scoring, GPS, navigation, boundary, exclusion-zone or high-score logic changes.
+## No other changes
+No scoring, high-score, timing, GPS, boundary, exclusion-zone or navigation-rule changes.
